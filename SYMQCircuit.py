@@ -33,7 +33,7 @@ class SYMQCircuit:
         """
         self.__circuit_unitary__ = np.matmul(gate, self.__circuit_unitary__)
 
-    def _tensor_prod_matrix_rep_(self, target_qubit: int, gate_mat_rep: np.ndarray) -> np.ndarray:
+    def _single_qubit_tensor_prod_matrix_rep_(self, target_qubit: int, gate_mat_rep: np.ndarray) -> np.ndarray:
         """
         Calculate the tensor product of a gate's matrix representation with the identity matrix
         for all qubits except the target qubit.
@@ -71,6 +71,20 @@ class SYMQCircuit:
         if target_qubit >= self.circuit_size or target_qubit < 0:
             raise ValueError(f"Target qubit: '{target_qubit}', must be in 0 <= target qubit < circuit size.")
 
+    def add_id(self, target_qubit: int):
+        """
+        Apply the identity gate to the target qubit.
+
+        Args:
+            target_qubit (int): The index of the target qubit (0-based) in the quantum circuit.
+
+        Raises:
+            ValueError: If the target qubit index is out of range for the circuit size.
+        """
+        self._validity_(target_qubit=target_qubit)
+        _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=self._identity_)
+        self._update_circuit_unitary_(_mat_rep_)
+
     def add_x(self, target_qubit: int):
         """
         Apply the Pauli-X gate (NOT gate) to the target qubit.
@@ -82,7 +96,7 @@ class SYMQCircuit:
             ValueError: If the target qubit index is out of range for the circuit size.
         """
         self._validity_(target_qubit=target_qubit)
-        _mat_rep_ = self._tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=self._x_gate_)
+        _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=self._x_gate_)
         self._update_circuit_unitary_(_mat_rep_)
 
     def add_y(self, target_qubit: int):
@@ -96,7 +110,7 @@ class SYMQCircuit:
             ValueError: If the target qubit index is out of range for the circuit size.
         """
         self._validity_(target_qubit=target_qubit)
-        _mat_rep_ = self._tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=self._y_gate_)
+        _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=self._y_gate_)
         self._update_circuit_unitary_(_mat_rep_)
 
     def add_z(self, target_qubit: int):
@@ -110,7 +124,7 @@ class SYMQCircuit:
             ValueError: If the target qubit index is out of range for the circuit size.
         """
         self._validity_(target_qubit=target_qubit)
-        _mat_rep_ = self._tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=self._z_gate_)
+        _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=self._z_gate_)
         self._update_circuit_unitary_(_mat_rep_)
 
     def add_h(self, target_qubit: int):
@@ -124,7 +138,7 @@ class SYMQCircuit:
             ValueError: If the target qubit index is out of range for the circuit size.
         """
         self._validity_(target_qubit=target_qubit)
-        _mat_rep_ = self._tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=self._h_gate_)
+        _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=self._h_gate_)
         self._update_circuit_unitary_(_mat_rep_)
 
     def add_rx(self, target_qubit: int, angle: float):
@@ -140,7 +154,7 @@ class SYMQCircuit:
         """
         self._validity_(target_qubit=target_qubit)
         _rx_gate_ = np.cos(angle / 2) * self._identity_ - 1j * np.sin(angle / 2) * self._x_gate_
-        _mat_rep_ = self._tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_rx_gate_)
+        _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_rx_gate_)
         self._update_circuit_unitary_(_mat_rep_)
 
     def add_ry(self, target_qubit: int, angle: float):
@@ -156,7 +170,7 @@ class SYMQCircuit:
         """
         self._validity_(target_qubit=target_qubit)
         _ry_gate_ = np.cos(angle / 2) * self._identity_ + 1j * np.sin(angle / 2) * self._y_gate_.T
-        _mat_rep_ = self._tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_ry_gate_)
+        _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_ry_gate_)
         self._update_circuit_unitary_(_mat_rep_)
 
     def add_rz(self, target_qubit: int, angle: float):
@@ -172,7 +186,7 @@ class SYMQCircuit:
         """
         self._validity_(target_qubit=target_qubit)
         _rz_gate_ = np.array([[np.exp(-1j * angle / 2), 0.0], [0.0, np.exp(1j * angle / 2)]], dtype=complex)
-        _mat_rep_ = self._tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_rz_gate_)
+        _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_rz_gate_)
         self._update_circuit_unitary_(_mat_rep_)
 
     def get_circuit_unitary(self):
