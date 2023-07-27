@@ -1,7 +1,9 @@
 import numpy as np
 
+from Tools import *
 
-class MyQuantumCircuit:
+
+class SYMQCircuit:
     def __init__(self, nr_qubits: int):
 
         if nr_qubits <= 0:
@@ -9,7 +11,7 @@ class MyQuantumCircuit:
 
         self.circuit_size = nr_qubits
         self.__circuit_unitary__ = np.eye(2 ** nr_qubits, dtype=complex)
-        self.__state_vector__ = np.array([1.0]+[0.0 for _ in range(2**nr_qubits-1)], dtype=complex)
+        self.__state_vector__ = np.array([1.0] + [0.0 for _ in range(2 ** nr_qubits - 1)], dtype=complex)
 
         self._identity_ = np.eye(2, dtype=complex)
 
@@ -98,58 +100,3 @@ class MyQuantumCircuit:
             _state_string_ = represent_integer_with_bits(number=n, nr_bits=int(np.log2(len(_state_vector_))))
             _probs_[_state_string_] = np.power(np.linalg.norm(c_n), 2)
         return _probs_
-
-
-def zero_state(nr_qubits: int) -> np.ndarray:
-    """
-    Create the zero state for a given number of qubits.
-
-    Args:
-        nr_qubits (int): The number of qubits in the state.
-
-    Returns:
-        np.ndarray: A numpy array representing the zero state.
-
-    Raises:
-        ValueError: If nr_qubits is not a positive integer.
-    """
-    if nr_qubits <= 0:
-        raise ValueError(f"Nr. qubits is: {nr_qubits}, but should be: 0 < nr qubits.")
-    _state_ = np.zeros(shape=(2 ** nr_qubits, 1), dtype=complex)
-    _state_[0] = 1.0
-    return _state_
-
-
-def state_probabilities(state: np.ndarray) -> dict:
-    """
-    Calculate the probabilities of each basis state in a quantum state.
-
-    Args:
-        state (np.ndarray): The quantum state as a numpy array.
-
-    Returns:
-        dict: A dictionary containing the basis state as keys and their respective probabilities as values.
-    """
-    _probs_ = {}
-    for n, c_n in enumerate(state):
-        _state_string_ = represent_integer_with_bits(number=n, nr_bits=int(np.log2(len(state))))
-        _probs_[_state_string_] = np.power(np.linalg.norm(c_n), 2)
-    return _probs_
-
-
-def represent_integer_with_bits(number: int, nr_bits: int) -> str:
-    """
-    Represent an integer using a specific number of bits.
-
-    Args:
-        number (int): The integer to be represented.
-        nr_bits (int): The number of bits to use for representation.
-
-    Returns:
-        str: A binary string representing the integer with leading zeros if required.
-    """
-    # Convert the integer to a binary string and remove the '0b' prefix
-    binary_string = bin(number)[2:]
-    # If the binary string is shorter than n, pad it with leading zeros
-    binary_string = binary_string.zfill(nr_bits)
-    return binary_string
