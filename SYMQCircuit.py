@@ -197,20 +197,31 @@ class SYMQCircuit:
     ###############################################################
     ######################## 2 QUBIT GATES ########################
     ###############################################################
-    def add_cnot(self, target_qubit: int, control_qubit: int) -> None:
+    def add_cnot(self, target_qubit: int, control_qubit: int, verbose: bool = False) -> None:
         _flip_ = {'0': '1', '1': '0'}
 
         _mat_rep_ = np.zeros_like(self.__circuit_unitary__)
         for basis_state in generate_bit_string_permutations(n=self.circuit_size):
-            if basis_state[control_qubit] == '1':
-                _ls_basis_state_vector_ = SYMQState(state=basis_state).get_statevector()
-                _rs_basis_state_ = basis_state[:target_qubit] + _flip_[basis_state[target_qubit]] + basis_state[
-                                                                                                    target_qubit + 1:]
+            if verbose: print(f"#### Basis state: {basis_state} ####")
+            # Reversing to match qiskit
+            _reversed_state_ = basis_state[::-1]
+            if _reversed_state_[control_qubit] == '1':
+                _rs_basis_state_ = list(basis_state)
+                # Note reverse indexing to match qiskit
+                _rs_basis_state_[-(target_qubit + 1)] = _flip_[basis_state[-(target_qubit + 1)]]
+                _rs_basis_state_ = ''.join(_rs_basis_state_)
+                if verbose: print(f"flipping: {basis_state}, to: {_rs_basis_state_}")
                 _rs_basis_state_vector_ = SYMQState(state=_rs_basis_state_).get_statevector()
+
+                _ls_basis_state_vector_ = SYMQState(state=basis_state).get_statevector()
                 _mat_rep_ += np.outer(_ls_basis_state_vector_, _rs_basis_state_vector_)
+                if verbose: print(f"adding: \n",
+                                  np.outer(_ls_basis_state_vector_, _rs_basis_state_vector_).real.astype(int))
+
             else:
                 _basis_state_vector_ = SYMQState(state=basis_state).get_statevector()
                 _mat_rep_ += np.outer(_basis_state_vector_, _basis_state_vector_)
+                if verbose: print(f"adding: \n", np.outer(_basis_state_vector_, _basis_state_vector_).real.astype(int))
         self._update_circuit_unitary_(_mat_rep_)
 
     def _get_cnot_mat(self, target_qubit: int, control_qubit: int):
@@ -218,15 +229,21 @@ class SYMQCircuit:
 
         _mat_rep_ = np.zeros_like(self.__circuit_unitary__)
         for basis_state in generate_bit_string_permutations(n=self.circuit_size):
-            if basis_state[control_qubit] == '1':
-                _ls_basis_state_vector_ = SYMQState(state=basis_state).get_statevector()
-                _rs_basis_state_ = basis_state[:target_qubit] + _flip_[basis_state[target_qubit]] + basis_state[
-                                                                                                    target_qubit + 1:]
+            # Reversing to match qiskit
+            _reversed_state_ = basis_state[::-1]
+            if _reversed_state_[control_qubit] == '1':
+                _rs_basis_state_ = list(basis_state)
+                # Note reverse indexing to match qiskit
+                _rs_basis_state_[-(target_qubit + 1)] = _flip_[basis_state[-(target_qubit + 1)]]
+                _rs_basis_state_ = ''.join(_rs_basis_state_)
                 _rs_basis_state_vector_ = SYMQState(state=_rs_basis_state_).get_statevector()
+
+                _ls_basis_state_vector_ = SYMQState(state=basis_state).get_statevector()
                 _mat_rep_ += np.outer(_ls_basis_state_vector_, _rs_basis_state_vector_)
             else:
                 _basis_state_vector_ = SYMQState(state=basis_state).get_statevector()
                 _mat_rep_ += np.outer(_basis_state_vector_, _basis_state_vector_)
+        self._update_circuit_unitary_(_mat_rep_)
         return _mat_rep_
 
     def add_cx(self, target_qubit: int, control_qubit: int) -> None:
@@ -247,11 +264,25 @@ class SYMQCircuit:
 
     def add_rzz(self, qubit_1: int, qubit_2: int, angle: float) -> None:
         _rz_gate_ = np.array([[np.exp(-1j * angle / 2), 0.0], [0.0, np.exp(1j * angle / 2)]], dtype=complex)
-        _rz_mat_rep_   = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=qubit_2, gate_mat_rep=_rz_gate_)
+        _rz_mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=qubit_2, gate_mat_rep=_rz_gate_)
         _cnot_mat_rep_ = self._get_cnot_mat(target_qubit=qubit_1, control_qubit=qubit_2)
         self._update_circuit_unitary_(_cnot_mat_rep_)
         self._update_circuit_unitary_(_rz_mat_rep_)
         self._update_circuit_unitary_(_cnot_mat_rep_)
+
+    def add_rxx(self, qubit_1: int, qubit_2: int, angle: float) -> None:
+        self.add_h(target_qubit=qubit_1)
+        self.add_h(target_qubit=qubit_2)
+        self.add_rzz(qubit_1=qubit_1, qubit_2=qubit_2, angle=angle)
+        self.add_h(target_qubit=qubit_1)
+        self.add_h(target_qubit=qubit_2)
+
+    def add_ryy(self, qubit_1: int, qubit_2: int, angle: float) -> None:
+        self.add_rx(target_qubit=qubit_1, angle=np.pi / 2)
+        self.add_rx(target_qubit=qubit_2, angle=np.pi / 2)
+        self.add_rzz(qubit_1=qubit_1, qubit_2=qubit_2, angle=angle)
+        self.add_rx(target_qubit=qubit_1, angle=-np.pi / 2)
+        self.add_rx(target_qubit=qubit_2, angle=-np.pi / 2)
 
     def get_circuit_unitary(self):
         """
