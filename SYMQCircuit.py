@@ -278,42 +278,137 @@ class SYMQCircuit:
         return _mat_rep_
 
     def add_cx(self, target_qubit: int, control_qubit: int) -> None:
+        """
+        Add a controlled-X (CNOT) gate to the quantum circuit.
+
+        Args:
+            target_qubit (int): The index of the target qubit (the qubit whose state is flipped if the control qubit is in state 1).
+            control_qubit (int): The index of the control qubit.
+
+        Returns:
+            None
+        """
         self.add_cnot(target_qubit=target_qubit, control_qubit=control_qubit)
 
     def add_cy(self, target_qubit: int, control_qubit: int) -> None:
-        self.add_rz(target_qubit=target_qubit, angle=-np.pi/2)
+        """
+        Add a controlled-Y gate to the quantum circuit.
+
+        Args:
+            target_qubit (int): The index of the target qubit.
+            control_qubit (int): The index of the control qubit.
+
+        Returns:
+            None
+        """
+        # Add an Rz gate with angle -pi/2 to implement the controlled-Y gate
+        self.add_rz(target_qubit=target_qubit, angle=-np.pi / 2)
+        # Add a CNOT gate to perform the controlled-X operation
         self.add_cx(target_qubit=target_qubit, control_qubit=control_qubit)
-        self.add_rz(target_qubit=target_qubit, angle=np.pi/2)
+        # Add another Rz gate with angle pi/2 to complete the controlled-Y operation
+        self.add_rz(target_qubit=target_qubit, angle=np.pi / 2)
 
     def add_cz(self, target_qubit: int, control_qubit: int) -> None:
+        """
+        Add a controlled-Z gate to the quantum circuit.
+
+        Args:
+            target_qubit (int): The index of the target qubit.
+            control_qubit (int): The index of the control qubit.
+
+        Returns:
+            None
+        """
+        # Add an H gate (Hadamard) to the target qubit
         self.add_h(target_qubit=target_qubit)
-        self.add_cx(target_qubit=target_qubit,control_qubit=control_qubit)
+        # Add a CNOT gate to perform the controlled-X operation
+        self.add_cx(target_qubit=target_qubit, control_qubit=control_qubit)
+        # Add another H gate to the target qubit
         self.add_h(target_qubit=target_qubit)
 
     def add_swap(self, qubit_1: int, qubit_2: int) -> None:
+        """
+        Add a SWAP gate to the quantum circuit, exchanging two qubits.
+
+        Args:
+            qubit_1 (int): The index of the first qubit to be exchanged.
+            qubit_2 (int): The index of the second qubit to be exchanged.
+
+        Returns:
+            None
+        """
         _cnot1_mat_rep_ = self._get_cnot_mat(target_qubit=qubit_1, control_qubit=qubit_2)
         _cnot2_mat_rep_ = self._get_cnot_mat(target_qubit=qubit_2, control_qubit=qubit_1)
+        # Apply the CNOT gate with control qubit as qubit_2 and target qubit as qubit_1
         self._update_circuit_unitary_(_cnot1_mat_rep_)
+        # Apply the CNOT gate with control qubit as qubit_1 and target qubit as qubit_2
         self._update_circuit_unitary_(_cnot2_mat_rep_)
+        # Apply the CNOT gate again with control qubit as qubit_2 and target qubit as qubit_1
         self._update_circuit_unitary_(_cnot1_mat_rep_)
 
     def add_rzz(self, qubit_1: int, qubit_2: int, angle: float) -> None:
-        self.add_cnot(target_qubit=qubit_1,control_qubit=qubit_2)
-        self.add_rz(target_qubit=qubit_1,angle=angle)
-        self.add_cnot(target_qubit=qubit_1,control_qubit=qubit_2)
+        """
+        Add a controlled phase shift gate (Rzz) to the quantum circuit.
+
+        Args:
+            qubit_1 (int): The index of the first qubit (control qubit).
+            qubit_2 (int): The index of the second qubit (target qubit).
+            angle (float): The angle of rotation in radians.
+
+        Returns:
+            None
+        """
+        # Apply a CNOT gate with control qubit as qubit_1 and target qubit as qubit_2
+        self.add_cnot(target_qubit=qubit_1, control_qubit=qubit_2)
+        # Apply an Rz gate to the target qubit with the specified angle
+        self.add_rz(target_qubit=qubit_1, angle=angle)
+        # Apply another CNOT gate with control qubit as qubit_1 and target qubit as qubit_2
+        self.add_cnot(target_qubit=qubit_1, control_qubit=qubit_2)
 
     def add_rxx(self, qubit_1: int, qubit_2: int, angle: float) -> None:
+        """
+        Add a controlled rotation around the XX-axis (Rxx) to the quantum circuit.
+
+        Args:
+            qubit_1 (int): The index of the first qubit (control qubit).
+            qubit_2 (int): The index of the second qubit (target qubit).
+            angle (float): The angle of rotation in radians.
+
+        Returns:
+            None
+        """
+        # Apply Hadamard gate (H) to qubit_1
         self.add_h(target_qubit=qubit_1)
+        # Apply Hadamard gate (H) to qubit_2
         self.add_h(target_qubit=qubit_2)
+        # Apply Rzz gate with the specified angle to qubit_1 and qubit_2
         self.add_rzz(qubit_1=qubit_1, qubit_2=qubit_2, angle=angle)
+        # Apply Hadamard gate (H) to qubit_1
         self.add_h(target_qubit=qubit_1)
+        # Apply Hadamard gate (H) to qubit_2
         self.add_h(target_qubit=qubit_2)
 
     def add_ryy(self, qubit_1: int, qubit_2: int, angle: float) -> None:
+        """
+        Add a controlled rotation around the YY-axis (Ryy) to the quantum circuit.
+
+        Args:
+            qubit_1 (int): The index of the first qubit (control qubit).
+            qubit_2 (int): The index of the second qubit (target qubit).
+            angle (float): The angle of rotation in radians.
+
+        Returns:
+            None
+        """
+        # Apply Rx gate with angle pi/2 to qubit_1
         self.add_rx(target_qubit=qubit_1, angle=np.pi / 2)
+        # Apply Rx gate with angle pi/2 to qubit_2
         self.add_rx(target_qubit=qubit_2, angle=np.pi / 2)
+        # Apply Rzz gate with the specified angle to qubit_1 and qubit_2
         self.add_rzz(qubit_1=qubit_1, qubit_2=qubit_2, angle=angle)
+        # Apply Rx gate with angle -pi/2 to qubit_1
         self.add_rx(target_qubit=qubit_1, angle=-np.pi / 2)
+        # Apply Rx gate with angle -pi/2 to qubit_2
         self.add_rx(target_qubit=qubit_2, angle=-np.pi / 2)
 
     def get_circuit_unitary(self):
