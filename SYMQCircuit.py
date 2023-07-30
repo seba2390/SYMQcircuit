@@ -243,7 +243,6 @@ class SYMQCircuit:
             else:
                 _basis_state_vector_ = SYMQState(state=basis_state).get_statevector()
                 _mat_rep_ += np.outer(_basis_state_vector_, _basis_state_vector_)
-        self._update_circuit_unitary_(_mat_rep_)
         return _mat_rep_
 
     def add_cx(self, target_qubit: int, control_qubit: int) -> None:
