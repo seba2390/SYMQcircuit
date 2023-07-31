@@ -248,6 +248,61 @@ class SYMQCircuit:
         # Update the circuit's unitary representation with the S gate's matrix representation
         self._update_circuit_unitary_(_mat_rep_)
 
+    def add_p(self, target_qubit: int, angle: float) -> None:
+        """
+        Add a P gate to the circuit.
+
+        The P gate is a single-qubit gate that introduces a phase factor to the qubit state.
+
+        Args:
+            target_qubit (int): The index of the target qubit.
+            angle (float): The rotation angle in radians by which the qubit state is phase-shifted.
+
+        Returns:
+            None
+        """
+        # Ensure that the target qubit index is valid
+        self._validity_(target_qubit=target_qubit)
+
+        # Define the P gate matrix representation
+        _p_gate_ = np.array([[1.0, 0.0], [0.0, np.exp(1j*angle)]], dtype=complex)
+
+        # Compute the tensor product matrix representation for the P gate on the target qubit
+        _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_p_gate_)
+
+        # Update the circuit's unitary representation with the P gate's matrix representation
+        self._update_circuit_unitary_(_mat_rep_)
+
+    def add_u(self, target_qubit: int, angle_1: float, angle_2: float, angle_3: float) -> None:
+        """
+        Add a U3 (Universal Single-Qubit) gate to the circuit.
+
+        The U3 gate is a general single-qubit gate that allows arbitrary rotations
+        around the X, Y, and Z axes. It can be used to construct any single-qubit gate.
+
+        Args:
+            target_qubit (int): The index of the target qubit.
+            angle_1 (float): The rotation angle around the X-axis in radians.
+            angle_2 (float): The rotation angle around the Y-axis in radians.
+            angle_3 (float): The rotation angle around the Z-axis in radians.
+
+        Returns:
+            None
+        """
+        # Ensure that the target qubit index is valid
+        self._validity_(target_qubit=target_qubit)
+
+        # Define the U gate matrix representation
+        _u_gate_ = np.array([[np.cos(angle_1/2),                   -np.exp(1j*angle_3)*np.sin(angle_1/2)],
+                             [np.exp(1j*angle_2)*np.sin(angle_1/2), np.exp(1j*(angle_2+angle_3))*np.cos(angle_1/2)]],
+                            dtype=complex)
+
+        # Compute the tensor product matrix representation for the U gate on the target qubit
+        _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_u_gate_)
+
+        # Update the circuit's unitary representation with the U gate's matrix representation
+        self._update_circuit_unitary_(_mat_rep_)
+
     ###############################################################
     ######################## 2 QUBIT GATES ########################
     ###############################################################
@@ -536,6 +591,10 @@ class SYMQCircuit:
 
         # Apply CX (CNOT) gate with control_qubit controlling the target_qubit again
         self.add_cx(target_qubit=target_qubit, control_qubit=control_qubit)
+
+    def add_cu(self):
+        # TODO: add impl of this.
+        pass
 
     def get_circuit_unitary(self):
         """
