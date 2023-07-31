@@ -59,7 +59,7 @@ class SYMQCircuit:
                     _mat_rep_ = np.kron(_mat_rep_, self._identity_)
         return _mat_rep_
 
-    def _validity_(self, target_qubit: int):
+    def _validity_(self, target_qubit: int, control_qubit=None) -> None:
         """
         Check if the target qubit index is valid for the current quantum circuit.
 
@@ -69,8 +69,9 @@ class SYMQCircuit:
         Raises:
             ValueError: If the target qubit index is out of range for the circuit size.
         """
-        if target_qubit >= self.circuit_size or target_qubit < 0:
-            raise ValueError(f"Target qubit: '{target_qubit}', must be in 0 <= target qubit < circuit size.")
+        if control_qubit is None:
+            if target_qubit >= self.circuit_size or target_qubit < 0:
+                raise ValueError(f"Target qubit: '{target_qubit}', must be in 0 <= target qubit < circuit size.")
 
     ###############################################################
     ######################## 1 QUBIT GATES ########################
@@ -193,6 +194,55 @@ class SYMQCircuit:
         _rz_gate_ = np.array([[np.exp(-1j * angle / 2), 0.0], [0.0, np.exp(1j * angle / 2)]], dtype=complex)
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_rz_gate_)
         self._update_circuit_unitary_(_mat_rep_)
+
+    def add_t(self, target_qubit: int) -> None:
+        """
+        Add a T gate to the circuit.
+
+        The T gate is a single-qubit gate that introduces a phase of π/4 to the qubit state.
+
+        Args:
+            target_qubit (int): The index of the target qubit.
+
+        Returns:
+            None
+        """
+        # Ensure that the target qubit index is valid
+        self._validity_(target_qubit=target_qubit)
+
+        # Define the T gate matrix representation
+        _t_gate_ = np.array([[1.0, 0.0], [0.0, np.exp(1j * np.pi / 4)]], dtype=complex)
+
+        # Compute the tensor product matrix representation for the T gate on the target qubit
+        _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_t_gate_)
+
+        # Update the circuit's unitary representation with the T gate's matrix representation
+        self._update_circuit_unitary_(_mat_rep_)
+
+    def add_s(self, target_qubit: int) -> None:
+        """
+        Add an S gate to the circuit.
+
+        The S gate is a single-qubit gate that introduces a phase of π/2 to the qubit state.
+
+        Args:
+            target_qubit (int): The index of the target qubit.
+
+        Returns:
+            None
+        """
+        # Ensure that the target qubit index is valid
+        self._validity_(target_qubit=target_qubit)
+
+        # Define the S gate matrix representation
+        _s_gate_ = np.array([[1.0, 0.0], [0.0, 1j]], dtype=complex)
+
+        # Compute the tensor product matrix representation for the S gate on the target qubit
+        _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_s_gate_)
+
+        # Update the circuit's unitary representation with the S gate's matrix representation
+        self._update_circuit_unitary_(_mat_rep_)
+
 
     ###############################################################
     ######################## 2 QUBIT GATES ########################
