@@ -194,7 +194,6 @@ class SYMQCircuit:
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_rz_gate_)
         self._update_circuit_unitary_(_mat_rep_)
 
-
     ###############################################################
     ######################## 2 QUBIT GATES ########################
     ###############################################################
@@ -413,20 +412,72 @@ class SYMQCircuit:
         self.add_rx(target_qubit=qubit_2, angle=-np.pi / 2)
 
     def add_crz(self, target_qubit: int, control_qubit: int, angle: float) -> None:
+        """
+        Add a controlled-RZ gate to the circuit.
+
+        Args:
+            target_qubit (int): The target qubit index.
+            control_qubit (int): The control qubit index.
+            angle (float): The rotation angle in radians.
+
+        Returns:
+            None
+        """
+        # Apply RZ gate to the target qubit controlled by the control qubit
         self.add_rz(target_qubit=target_qubit, angle=angle / 2)
+
+        # Apply CX (CNOT) gate with control_qubit controlling the target_qubit
         self.add_cx(target_qubit=target_qubit, control_qubit=control_qubit)
+
+        # Apply RZ gate to the target qubit controlled by the control qubit
         self.add_rz(target_qubit=target_qubit, angle=-angle / 2)
+
+        # Apply CX (CNOT) gate with control_qubit controlling the target_qubit again
         self.add_cx(target_qubit=target_qubit, control_qubit=control_qubit)
 
     def add_crx(self, target_qubit: int, control_qubit: int, angle: float) -> None:
+        """
+        Add a controlled-RX gate to the circuit.
+
+        Args:
+            target_qubit (int): The target qubit index.
+            control_qubit (int): The control qubit index.
+            angle (float): The rotation angle in radians.
+
+        Returns:
+            None
+        """
+        # Apply Hadamard gate to the target qubit
         self.add_h(target_qubit=target_qubit)
+
+        # Apply controlled-RZ gate to the target qubit controlled by the control qubit
         self.add_crz(target_qubit=target_qubit, control_qubit=control_qubit, angle=angle)
+
+        # Apply Hadamard gate to the target qubit again
         self.add_h(target_qubit=target_qubit)
 
     def add_cry(self, target_qubit: int, control_qubit: int, angle: float) -> None:
+        """
+        Add a controlled-RY gate to the circuit.
+
+        Args:
+            target_qubit (int): The target qubit index.
+            control_qubit (int): The control qubit index.
+            angle (float): The rotation angle in radians.
+
+        Returns:
+            None
+        """
+        # Apply RY gate to the target qubit controlled by the control qubit
         self.add_ry(target_qubit=target_qubit, angle=angle / 2)
+
+        # Apply CX (CNOT) gate with control_qubit controlling the target_qubit
         self.add_cx(target_qubit=target_qubit, control_qubit=control_qubit)
+
+        # Apply RY gate to the target qubit controlled by the control qubit
         self.add_ry(target_qubit=target_qubit, angle=-angle / 2)
+
+        # Apply CX (CNOT) gate with control_qubit controlling the target_qubit again
         self.add_cx(target_qubit=target_qubit, control_qubit=control_qubit)
 
     def get_circuit_unitary(self):
