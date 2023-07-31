@@ -34,7 +34,7 @@ def generate_bit_string_permutations(n: int) -> str:
         yield _binary_string_
 
 
-def get_state_probabilities(state_vector_: np.ndarray) -> dict:
+def _get_state_probabilities_(state_vector_: np.ndarray) -> dict:
     """
     Calculate the probabilities of each basis state in a quantum state.
 
