@@ -69,9 +69,14 @@ class SYMQCircuit:
         Raises:
             ValueError: If the target qubit index is out of range for the circuit size.
         """
-        if control_qubit is None:
-            if target_qubit >= self.circuit_size or target_qubit < 0:
-                raise ValueError(f"Target qubit: '{target_qubit}', must be in 0 <= target qubit < circuit size.")
+        if target_qubit >= self.circuit_size or target_qubit < 0:
+            raise ValueError(f"Target qubit: '{target_qubit}', must be in 0 <= target qubit < circuit size.")
+
+        if control_qubit is not None:
+            if control_qubit >= self.circuit_size or control_qubit < 0:
+                raise ValueError(f"Control qubit: '{control_qubit}', must be in 0 <= control qubit < circuit size.")
+            if control_qubit == target_qubit:
+                raise ValueError(f"Control qubit should be different from target qubit.")
 
     ###############################################################
     ######################## 1 QUBIT GATES ########################
@@ -243,7 +248,6 @@ class SYMQCircuit:
         # Update the circuit's unitary representation with the S gate's matrix representation
         self._update_circuit_unitary_(_mat_rep_)
 
-
     ###############################################################
     ######################## 2 QUBIT GATES ########################
     ###############################################################
@@ -259,6 +263,7 @@ class SYMQCircuit:
         Returns:
             None
         """
+        self._validity_(target_qubit=target_qubit, control_qubit=control_qubit)
 
         _flip_ = {'0': '1', '1': '0'}
 
@@ -338,6 +343,7 @@ class SYMQCircuit:
         Returns:
             None
         """
+
         self.add_cnot(target_qubit=target_qubit, control_qubit=control_qubit)
 
     def add_cy(self, target_qubit: int, control_qubit: int) -> None:
@@ -387,6 +393,7 @@ class SYMQCircuit:
         Returns:
             None
         """
+        self._validity_(target_qubit=qubit_1, control_qubit=qubit_2)
         _cnot1_mat_rep_ = self._get_cnot_mat(target_qubit=qubit_1, control_qubit=qubit_2)
         _cnot2_mat_rep_ = self._get_cnot_mat(target_qubit=qubit_2, control_qubit=qubit_1)
         # Apply the CNOT gate with control qubit as qubit_2 and target qubit as qubit_1
