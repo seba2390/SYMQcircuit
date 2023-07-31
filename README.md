@@ -1,5 +1,5 @@
 # SYMQcircuit
-An implementation of a state vector circuit w. gates. \n 
+An implementation of a state vector circuit w. gates. 
 ## Currently Implemented Gates: ##
 #### 1 qubit gates: ####
 - Pauli X, Pauli Y, Pauli Z
@@ -12,7 +12,13 @@ An implementation of a state vector circuit w. gates. \n
 - RXX, RYY, RZZ
 - CRX, CRY, CRZ (Controlled rotations)
 
-and ability to read out probability distribution for state given circuit. 
+## Example: ##
+
+```python
+require 'redcarpet'
+markdown = Redcarpet.new("Hello World!")
+puts markdown.to_html
+```
 
 
 
