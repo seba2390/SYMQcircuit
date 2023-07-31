@@ -20,11 +20,14 @@ from SYMQCircuit import *
 
 # Defining number of qubits in circuit
 _N_QUBITS_ = 3
+
 # Creating instance of circuit
 my_circuit = SYMQCircuit(nr_qubits=_N_QUBITS_)
+
 #Adding H to all qubits in circuit
 for q in range(_N_QUBITS_):
     my_circuit.add_h(target_qubit=q)
+    
 # Adding miscellaneous gates to circuit 
 my_circuit.add_cnot(target_qubit=2, control_qubit=0)
 my_circuit.add_rz(target_qubit=1, angle=np.pi/2)
@@ -32,7 +35,9 @@ my_circuit.add_cry(target_qubit=2, control_qubit=1, angle=np.pi / 7)
 
 # Retrieving state vector
 state_vector = my_circuit.get_state_vector()
-print(state_vector)
+
+# Or just get probability distribution 
+probs = my_circuit.get_state_probabilities()
 ```
 
 
