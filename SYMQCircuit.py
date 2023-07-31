@@ -194,11 +194,6 @@ class SYMQCircuit:
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_rz_gate_)
         self._update_circuit_unitary_(_mat_rep_)
 
-    def add_r(self, qubit: int, angle1: float, angle2: float) -> None:
-        _r_gate_ = np.cos(angle1 / 2) * self._identity_ - 1j * np.exp(-1j * angle2 / 2) * np.sin(
-            angle1 / 2) * self._x_gate_
-        _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=qubit, gate_mat_rep=_r_gate_)
-        self._update_circuit_unitary_(_mat_rep_)
 
     ###############################################################
     ######################## 2 QUBIT GATES ########################
@@ -429,10 +424,10 @@ class SYMQCircuit:
         self.add_h(target_qubit=target_qubit)
 
     def add_cry(self, target_qubit: int, control_qubit: int, angle: float) -> None:
-        self.add_r(qubit=control_qubit, angle1=angle, angle2=np.pi)
-        self.add_cnot(target_qubit=target_qubit, control_qubit=control_qubit)
-        self.add_r(qubit=control_qubit, angle1=-angle, angle2=np.pi)
-        self.add_cnot(target_qubit=target_qubit, control_qubit=control_qubit)
+        self.add_ry(target_qubit=target_qubit, angle=angle / 2)
+        self.add_cx(target_qubit=target_qubit, control_qubit=control_qubit)
+        self.add_ry(target_qubit=target_qubit, angle=-angle / 2)
+        self.add_cx(target_qubit=target_qubit, control_qubit=control_qubit)
 
     def get_circuit_unitary(self):
         """
