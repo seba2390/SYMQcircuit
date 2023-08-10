@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.sparse import csr_matrix, lil_matrix
+from scipy.sparse import csr_matrix, lil_matrix, kron, identity
 
 from Tools import *
 from SYMQState import *
@@ -17,16 +17,16 @@ class SYMQCircuit:
             raise ValueError(f"Circuit size: '{nr_qubits}' should be positive int.")
 
         self.circuit_size = nr_qubits
-        self.__circuit_unitary__ = csr_matrix(np.eye(2 ** nr_qubits, dtype=self.dtype ))
+        self.__circuit_unitary__ = identity(2 ** nr_qubits, format='csr', dtype=self.dtype)
         self.__state_vector__ = csr_matrix(np.array([1.0] + [0.0 for _ in range(2 ** nr_qubits - 1)], dtype=self.dtype ))
 
-        self._identity_ = np.eye(2, dtype=self.dtype )
+        self._identity_ = identity(2, format='csr', dtype=self.dtype)
 
-        self._x_gate_ = np.array([[0, 1], [1, 0]], dtype=self.dtype )
-        self._y_gate_ = np.array([[0, -1j], [1j, 0]], dtype=self.dtype )
-        self._z_gate_ = np.array([[1, 0], [0, -1]], dtype=self.dtype )
+        self._x_gate_ = csr_matrix(np.array([[0, 1], [1, 0]], dtype=self.dtype ))
+        self._y_gate_ = csr_matrix(np.array([[0, -1j], [1j, 0]], dtype=self.dtype ))
+        self._z_gate_ = csr_matrix(np.array([[1, 0], [0, -1]], dtype=self.dtype ))
 
-        self._h_gate_ = (1.0 / np.sqrt(2.0)) * np.array([[1, 1], [1, -1]], dtype=self.dtype )
+        self._h_gate_ = csr_matrix((1.0 / np.sqrt(2.0)) * np.array([[1, 1], [1, -1]], dtype=self.dtype ))
 
     def _update_circuit_unitary_(self, gate: csr_matrix):
         """
@@ -40,7 +40,7 @@ class SYMQCircuit:
         """
         self.__circuit_unitary__ = gate @ self.__circuit_unitary__
 
-    def _single_qubit_tensor_prod_matrix_rep_(self, target_qubit: int, gate_mat_rep: np.ndarray) -> csr_matrix:
+    def _single_qubit_tensor_prod_matrix_rep_(self, target_qubit: int, gate_mat_rep: csr_matrix) -> csr_matrix:
         """
         Calculate the tensor product of a gate's matrix representation with the identity matrix
         for all qubits except the target qubit.
@@ -52,17 +52,17 @@ class SYMQCircuit:
         Returns:
             np.ndarray: The tensor product of the gate's matrix representation with identity matrices.
         """
+
         if target_qubit == self.circuit_size - 1:
             _mat_rep_ = gate_mat_rep
-            for _qubit_ in range(0, self.circuit_size - 1):
-                _mat_rep_ = np.kron(_mat_rep_, self._identity_)
+            _after_I_ = identity(2 ** (self.circuit_size - 1), format='csr')
+            _mat_rep_ = kron(_mat_rep_, _after_I_)
         else:
-            _mat_rep_ = self._identity_
-            for _qubit_ in range(0, self.circuit_size - 1):
-                if self.circuit_size - _qubit_ - 2 == target_qubit:
-                    _mat_rep_ = np.kron(_mat_rep_, gate_mat_rep)
-                else:
-                    _mat_rep_ = np.kron(_mat_rep_, self._identity_)
+            _before_I_ = identity(2 ** (self.circuit_size - target_qubit - 1), format='csr')
+            _mat_rep_ = kron(_before_I_, gate_mat_rep)
+            _after_I_ = identity(2 ** target_qubit, format='csr')
+            _mat_rep_ = kron(_mat_rep_, _after_I_)
+
         return csr_matrix(_mat_rep_)
 
     def _validity_(self, target_qubit: int, control_qubit=None) -> None:
@@ -202,7 +202,7 @@ class SYMQCircuit:
             ValueError: If the target qubit index is out of range for the circuit size.
         """
         self._validity_(target_qubit=target_qubit)
-        _rz_gate_ = np.array([[np.exp(-1j * angle / 2), 0.0], [0.0, np.exp(1j * angle / 2)]], dtype=self.dtype )
+        _rz_gate_ = csr_matrix(np.array([[np.exp(-1j * angle / 2), 0.0], [0.0, np.exp(1j * angle / 2)]], dtype=self.dtype ))
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_rz_gate_)
         self._update_circuit_unitary_(_mat_rep_)
 
@@ -222,7 +222,7 @@ class SYMQCircuit:
         self._validity_(target_qubit=target_qubit)
 
         # Define the T gate matrix representation
-        _t_gate_ = np.array([[1.0, 0.0], [0.0, np.exp(1j * np.pi / 4)]], dtype=self.dtype)
+        _t_gate_ = csr_matrix(np.array([[1.0, 0.0], [0.0, np.exp(1j * np.pi / 4)]], dtype=self.dtype))
 
         # Compute the tensor product matrix representation for the T gate on the target qubit
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_t_gate_)
@@ -246,7 +246,7 @@ class SYMQCircuit:
         self._validity_(target_qubit=target_qubit)
 
         # Define the S gate matrix representation
-        _s_gate_ = np.array([[1.0, 0.0], [0.0, 1j]], dtype=self.dtype)
+        _s_gate_ = csr_matrix(np.array([[1.0, 0.0], [0.0, 1j]], dtype=self.dtype))
 
         # Compute the tensor product matrix representation for the S gate on the target qubit
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_s_gate_)
@@ -271,7 +271,7 @@ class SYMQCircuit:
         self._validity_(target_qubit=target_qubit)
 
         # Define the P gate matrix representation
-        _p_gate_ = np.array([[1.0, 0.0], [0.0, np.exp(1j * angle)]], dtype=self.dtype)
+        _p_gate_ = csr_matrix(np.array([[1.0, 0.0], [0.0, np.exp(1j * angle)]], dtype=self.dtype))
 
         # Compute the tensor product matrix representation for the P gate on the target qubit
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_p_gate_)
@@ -299,10 +299,10 @@ class SYMQCircuit:
         self._validity_(target_qubit=target_qubit)
 
         # Define the U gate matrix representation
-        _u_gate_ = np.array([[np.cos(angle_1 / 2), -np.exp(1j * angle_3) * np.sin(angle_1 / 2)],
+        _u_gate_ = csr_matrix(np.array([[np.cos(angle_1 / 2), -np.exp(1j * angle_3) * np.sin(angle_1 / 2)],
                              [np.exp(1j * angle_2) * np.sin(angle_1 / 2),
                               np.exp(1j * (angle_2 + angle_3)) * np.cos(angle_1 / 2)]],
-                            dtype=self.dtype)
+                            dtype=self.dtype))
 
         # Compute the tensor product matrix representation for the U gate on the target qubit
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_u_gate_)
