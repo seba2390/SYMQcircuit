@@ -1,5 +1,7 @@
 # SYMQcircuit
-An implementation of a state vector circuit w. gates. 
+An implementation of a gate based quantum state vector simulator. 
+Utilizes Scipy sparse matrix structure[^1] to improve memory consumption and computation time. 
+
 ## Currently Implemented Gates: ##
 #### 1 qubit gates: ####
 - Pauli X, Pauli Y, Pauli Z
@@ -11,6 +13,8 @@ An implementation of a state vector circuit w. gates.
 - SWAP
 - RXX, RYY, RZZ
 - CRX, CRY, CRZ (Controlled rotations)
+
+[^1]: [Sparse scipy matrices (scipy.sparse)](https://docs.scipy.org/doc/scipy/reference/sparse.html)
 
 ## Example: ##
 
