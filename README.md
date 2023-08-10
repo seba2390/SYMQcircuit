@@ -46,7 +46,7 @@ probs = my_circuit.get_state_probabilities()
 # Plotting the probability distribution
 plot_histogram(probs)
 ```
-![](https://github.com/seba2390/SYMQcircuit/blob/main/gallery/output.png)
+![](https://github.com/seba2390/SYMQcircuit/blob/main/gallery/output.png | width=100)
 
 
 N.B. the '+' operator is overloaded for the class, so that
