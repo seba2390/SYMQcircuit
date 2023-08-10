@@ -19,11 +19,11 @@ Utilizes Scipy sparse matrix structure[^1] to improve memory consumption and com
 ## Example: ##
 
 ```python
-import numpy as np
+from qiskit.visualization import plot_histogram
 from SYMQCircuit import *
 
 # Defining number of qubits in circuit
-_N_QUBITS_ = 16
+_N_QUBITS_ = 3
 
 # Creating instance of circuit
 my_circuit = SYMQCircuit(nr_qubits=_N_QUBITS_)
@@ -42,7 +42,13 @@ state_vector = my_circuit.get_state_vector()
 
 # Or just get probability distribution 
 probs = my_circuit.get_state_probabilities()
+
+# Plotting the probability distribution
+plot_histogram(probs)
 ```
+![Alt text](image link)
+
+
 N.B. the '+' operator is overloaded for the class, so that
 circuit1 + circuit2 corresponds to simply extending circuit1 by circuit2:
 
