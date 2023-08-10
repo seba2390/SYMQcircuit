@@ -46,9 +46,9 @@ probs = my_circuit.get_state_probabilities()
 # Plotting the probability distribution
 plot_histogram(probs)
 ```
-<div style="text-align: center;">
-  <img src="https://github.com/seba2390/SYMQcircuit/blob/main/gallery/output.png" width="50%" style="margin: 0 auto;">
-</div>
+<p align="center">
+  <img src="https://github.com/seba2390/SYMQcircuit/blob/main/gallery/output.png" width="50%" />
+</p>
 
 N.B. the '+' operator is overloaded for the class, so that
 circuit1 + circuit2 corresponds to simply extending circuit1 by circuit2:
