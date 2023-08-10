@@ -28,6 +28,125 @@ class SYMQCircuit:
 
         self._h_gate_ = csr_matrix((1.0 / np.sqrt(2.0)) * np.array([[1, 1], [1, -1]], dtype=self.dtype ))
 
+    ###############################################################
+    ####################### GENERIC METHODS #######################
+    ###############################################################
+
+    def __add__(self, other):
+        """
+        Overloads the '+' operator to combine two SYMQCircuit objects.
+
+        This method allows adding two SYMQCircuit objects by composing their unitary representations.
+        The two circuits must have the same circuit size for addition to be valid. If the dtype of the two circuits
+        differs, the resulting circuit will inherit the dtype of the first circuit.
+
+        Args:
+            other (SYMQCircuit): The SYMQCircuit object to be added to the current circuit.
+
+        Returns:
+            SYMQCircuit: A new SYMQCircuit object representing the composition of the two input circuits.
+
+        Raises:
+            ValueError: If the circuit sizes of the two input circuits are not equal.
+            TypeError: If the 'other' operand is not of type SYMQCircuit.
+
+        Example:
+            circuit1 = SYMQCircuit(nr_qubits=3)
+            circuit2 = SYMQCircuit(nr_qubits=3)
+            result = circuit1 + circuit2  # Combines the two circuits into a new circuit.
+        """
+        if isinstance(other, SYMQCircuit):
+            if self.circuit_size != other.circuit_size:
+                raise ValueError("Circuits are not of equal size.")
+            if self.dtype != other.dtype:
+                print("Circuits not of same dtype - defaulting to dtype of circuit1 in circuit1 + circuit2.")
+            resulting_circuit = SYMQCircuit(nr_qubits=self.circuit_size)
+            resulting_circuit.__circuit_unitary__ = other.__circuit_unitary__ @ self.__circuit_unitary__
+            resulting_circuit.dtype = self.dtype
+            return resulting_circuit
+        else:
+            raise TypeError("Unsupported operand type for +")
+
+    def __iadd__(self, other):
+        """
+        Overloads the '+=' operator to combine the current SYMQCircuit object with another.
+
+        This method combines the current SYMQCircuit object with another SYMQCircuit object by composing their unitary
+        representations. The two circuits must have the same circuit size for addition to be valid. If the dtype of the two
+        circuits differs, the resulting circuit will inherit the dtype of the current circuit.
+
+        Args:
+            other (SYMQCircuit): The SYMQCircuit object to be added to the current circuit.
+
+        Returns:
+            None
+
+        Raises:
+            ValueError: If the circuit sizes of the two input circuits are not equal.
+            TypeError: If the 'other' operand is not of type SYMQCircuit.
+
+        Example:
+            circuit1 = SYMQCircuit(nr_qubits=3)
+            circuit2 = SYMQCircuit(nr_qubits=3)
+            circuit1 += circuit2  # Combines the two circuits into the current circuit.
+        """
+        return self.__add__(other)
+
+    def __eq__(self, other):
+        """
+        Compare two SYMQCircuit objects for equality.
+
+        This method checks whether two SYMQCircuit objects are equal by comparing their circuit sizes and data types.
+        If the two circuits have the same circuit size and data type, their unitary representations are compared element-wise
+        for numerical closeness using NumPy's `np.allclose()` function.
+
+        Args:
+            other (SYMQCircuit): The SYMQCircuit object to compare with.
+
+        Returns:
+            bool: True if the two SYMQCircuit objects are equal, False otherwise.
+
+        Example:
+            circuit1 = SYMQCircuit(nr_qubits=3)
+            circuit2 = SYMQCircuit(nr_qubits=3)
+            if circuit1 == circuit2:
+                print("The two circuits are equal.")
+        """
+        if isinstance(other, SYMQCircuit):
+            if self.circuit_size == other.circuit_size and self.dtype == other.dtype:
+                return np.allclose(self.get_circuit_unitary(), other.get_circuit_unitary())
+        return False
+
+    def __str__(self):
+        """
+        Generate a human-readable string representation of the SYMQCircuit object.
+
+        Returns:
+            str: A string describing the SYMQCircuit object, including the number of qubits.
+
+        Example:
+            circuit = SYMQCircuit(nr_qubits=3)
+            print(str(circuit))  # Output: "SYMQCircuit with 3 qubits."
+        """
+        return f"SYMQCircuit with {self.circuit_size} qubits."
+
+    def __repr__(self):
+        """
+        Generate an unambiguous string representation of the SYMQCircuit object.
+
+        Returns:
+            str: A string that can be used to recreate the SYMQCircuit object.
+
+        Example:
+            circuit = SYMQCircuit(circuit_size=4, dtype=np.complex64)
+            print(repr(circuit))  # Output: "SYMQCircuit(circuit_size=4, dtype=<class 'numpy.complex64'>)"
+        """
+        return f"SYMQCircuit(circuit_size={self.circuit_size}, dtype={self.dtype})"
+
+    ###############################################################
+    ####################### UTILITY METHODS #######################
+    ###############################################################
+
     def _update_circuit_unitary_(self, gate: csr_matrix):
         """
         Update the circuit's unitary representation by performing matrix multiplication with a gate.
@@ -83,6 +202,8 @@ class SYMQCircuit:
                 raise ValueError(f"Control qubit: '{control_qubit}', must be in 0 <= control qubit < circuit size.")
             if control_qubit == target_qubit:
                 raise ValueError(f"Control qubit should be different from target qubit.")
+
+
 
     ###############################################################
     ######################## 1 QUBIT GATES ########################
