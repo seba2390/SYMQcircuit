@@ -19,7 +19,7 @@ import numpy as np
 from SYMQCircuit import *
 
 # Defining number of qubits in circuit
-_N_QUBITS_ = 3
+_N_QUBITS_ = 16
 
 # Creating instance of circuit
 my_circuit = SYMQCircuit(nr_qubits=_N_QUBITS_)
