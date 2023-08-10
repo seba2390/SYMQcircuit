@@ -1,28 +1,34 @@
 import numpy as np
+from scipy.sparse import csr_matrix, lil_matrix
 
 from Tools import *
 from SYMQState import *
 
 
 class SYMQCircuit:
-    def __init__(self, nr_qubits: int):
+    def __init__(self, nr_qubits: int, precision: int = 64):
+
+        _dtypes_ = {64: np.complex64, 128: np.complex128}
+        if precision not in list(_dtypes_.keys()):
+            raise ValueError('Unrecognized nr. of bits for precision, should be either of: {16,32,64,128}.')
+        self.dtype = _dtypes_[precision]
 
         if nr_qubits <= 0:
             raise ValueError(f"Circuit size: '{nr_qubits}' should be positive int.")
 
         self.circuit_size = nr_qubits
-        self.__circuit_unitary__ = np.eye(2 ** nr_qubits, dtype=complex)
-        self.__state_vector__ = np.array([1.0] + [0.0 for _ in range(2 ** nr_qubits - 1)], dtype=complex)
+        self.__circuit_unitary__ = csr_matrix(np.eye(2 ** nr_qubits, dtype=self.dtype ))
+        self.__state_vector__ = csr_matrix(np.array([1.0] + [0.0 for _ in range(2 ** nr_qubits - 1)], dtype=self.dtype ))
 
-        self._identity_ = np.eye(2, dtype=complex)
+        self._identity_ = np.eye(2, dtype=self.dtype )
 
-        self._x_gate_ = np.array([[0, 1], [1, 0]], dtype=complex)
-        self._y_gate_ = np.array([[0, -1j], [1j, 0]], dtype=complex)
-        self._z_gate_ = np.array([[1, 0], [0, -1]], dtype=complex)
+        self._x_gate_ = np.array([[0, 1], [1, 0]], dtype=self.dtype )
+        self._y_gate_ = np.array([[0, -1j], [1j, 0]], dtype=self.dtype )
+        self._z_gate_ = np.array([[1, 0], [0, -1]], dtype=self.dtype )
 
-        self._h_gate_ = (1.0 / np.sqrt(2.0)) * np.array([[1, 1], [1, -1]], dtype=complex)
+        self._h_gate_ = (1.0 / np.sqrt(2.0)) * np.array([[1, 1], [1, -1]], dtype=self.dtype )
 
-    def _update_circuit_unitary_(self, gate: np.ndarray):
+    def _update_circuit_unitary_(self, gate: csr_matrix):
         """
         Update the circuit's unitary representation by performing matrix multiplication with a gate.
 
@@ -32,9 +38,9 @@ class SYMQCircuit:
         Returns:
             None: This function updates the internal circuit's unitary representation in place.
         """
-        self.__circuit_unitary__ = np.matmul(gate, self.__circuit_unitary__)
+        self.__circuit_unitary__ = gate @ self.__circuit_unitary__
 
-    def _single_qubit_tensor_prod_matrix_rep_(self, target_qubit: int, gate_mat_rep: np.ndarray) -> np.ndarray:
+    def _single_qubit_tensor_prod_matrix_rep_(self, target_qubit: int, gate_mat_rep: np.ndarray) -> csr_matrix:
         """
         Calculate the tensor product of a gate's matrix representation with the identity matrix
         for all qubits except the target qubit.
@@ -57,7 +63,7 @@ class SYMQCircuit:
                     _mat_rep_ = np.kron(_mat_rep_, gate_mat_rep)
                 else:
                     _mat_rep_ = np.kron(_mat_rep_, self._identity_)
-        return _mat_rep_
+        return csr_matrix(_mat_rep_)
 
     def _validity_(self, target_qubit: int, control_qubit=None) -> None:
         """
@@ -196,7 +202,7 @@ class SYMQCircuit:
             ValueError: If the target qubit index is out of range for the circuit size.
         """
         self._validity_(target_qubit=target_qubit)
-        _rz_gate_ = np.array([[np.exp(-1j * angle / 2), 0.0], [0.0, np.exp(1j * angle / 2)]], dtype=complex)
+        _rz_gate_ = np.array([[np.exp(-1j * angle / 2), 0.0], [0.0, np.exp(1j * angle / 2)]], dtype=self.dtype )
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_rz_gate_)
         self._update_circuit_unitary_(_mat_rep_)
 
@@ -216,7 +222,7 @@ class SYMQCircuit:
         self._validity_(target_qubit=target_qubit)
 
         # Define the T gate matrix representation
-        _t_gate_ = np.array([[1.0, 0.0], [0.0, np.exp(1j * np.pi / 4)]], dtype=complex)
+        _t_gate_ = np.array([[1.0, 0.0], [0.0, np.exp(1j * np.pi / 4)]], dtype=self.dtype)
 
         # Compute the tensor product matrix representation for the T gate on the target qubit
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_t_gate_)
@@ -240,7 +246,7 @@ class SYMQCircuit:
         self._validity_(target_qubit=target_qubit)
 
         # Define the S gate matrix representation
-        _s_gate_ = np.array([[1.0, 0.0], [0.0, 1j]], dtype=complex)
+        _s_gate_ = np.array([[1.0, 0.0], [0.0, 1j]], dtype=self.dtype)
 
         # Compute the tensor product matrix representation for the S gate on the target qubit
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_s_gate_)
@@ -265,7 +271,7 @@ class SYMQCircuit:
         self._validity_(target_qubit=target_qubit)
 
         # Define the P gate matrix representation
-        _p_gate_ = np.array([[1.0, 0.0], [0.0, np.exp(1j*angle)]], dtype=complex)
+        _p_gate_ = np.array([[1.0, 0.0], [0.0, np.exp(1j * angle)]], dtype=self.dtype)
 
         # Compute the tensor product matrix representation for the P gate on the target qubit
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_p_gate_)
@@ -293,9 +299,10 @@ class SYMQCircuit:
         self._validity_(target_qubit=target_qubit)
 
         # Define the U gate matrix representation
-        _u_gate_ = np.array([[np.cos(angle_1/2),                   -np.exp(1j*angle_3)*np.sin(angle_1/2)],
-                             [np.exp(1j*angle_2)*np.sin(angle_1/2), np.exp(1j*(angle_2+angle_3))*np.cos(angle_1/2)]],
-                            dtype=complex)
+        _u_gate_ = np.array([[np.cos(angle_1 / 2), -np.exp(1j * angle_3) * np.sin(angle_1 / 2)],
+                             [np.exp(1j * angle_2) * np.sin(angle_1 / 2),
+                              np.exp(1j * (angle_2 + angle_3)) * np.cos(angle_1 / 2)]],
+                            dtype=self.dtype)
 
         # Compute the tensor product matrix representation for the U gate on the target qubit
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_u_gate_)
@@ -306,6 +313,47 @@ class SYMQCircuit:
     ###############################################################
     ######################## 2 QUBIT GATES ########################
     ###############################################################
+
+    def add_cnot_OLD(self, target_qubit: int, control_qubit: int) -> None:
+        """
+        Add a controlled-NOT (CNOT) gate to the quantum circuit.
+
+        Args:
+            target_qubit (int): The index of the target qubit (the qubit whose state is flipped if the control qubit is in state 1).
+            control_qubit (int): The index of the control qubit.
+
+        Returns:
+            None
+        """
+        self._validity_(target_qubit=target_qubit, control_qubit=control_qubit)
+
+        _flip_ = {'0': '1', '1': '0'}
+
+        # Create a matrix representation of the circuit unitary
+        _mat_rep_ = csr_matrix(self.__circuit_unitary__.shape, dtype=self.dtype)
+
+        # Iterate over all possible basis states (bit string permutations)
+        for basis_state in generate_bit_string_permutations(n=self.circuit_size):
+            # Reversing to match qiskit convention (least significant bit on the right)
+            _reversed_state_ = basis_state[::-1]
+
+            if _reversed_state_[control_qubit] == '1':
+                # If the control qubit is in state 1, apply the CNOT operation to the basis state
+                _rs_basis_state_ = list(basis_state)
+                # Note reverse indexing to match qiskit convention
+                _rs_basis_state_[-(target_qubit + 1)] = _flip_[basis_state[-(target_qubit + 1)]]
+                _rs_basis_state_ = ''.join(_rs_basis_state_)
+                _rs_basis_state_vector_ = SYMQState(state=_rs_basis_state_).get_statevector()
+
+                _ls_basis_state_vector_ = SYMQState(state=basis_state).get_statevector()
+                _mat_rep_ += csr_matrix(np.outer(_ls_basis_state_vector_, _rs_basis_state_vector_))
+            else:
+                # If the control qubit is in state 0, apply an identity operation to the basis state
+                _basis_state_vector_ = SYMQState(state=basis_state).get_statevector()
+                _mat_rep_ += csr_matrix(np.outer(_basis_state_vector_, _basis_state_vector_))
+
+        # Update the circuit unitary with the CNOT operation
+        self._update_circuit_unitary_(_mat_rep_)
 
     def add_cnot(self, target_qubit: int, control_qubit: int) -> None:
         """
@@ -323,7 +371,7 @@ class SYMQCircuit:
         _flip_ = {'0': '1', '1': '0'}
 
         # Create a matrix representation of the circuit unitary
-        _mat_rep_ = np.zeros_like(self.__circuit_unitary__)
+        _mat_rep_ = lil_matrix(self.__circuit_unitary__.shape, dtype=self.dtype)
 
         # Iterate over all possible basis states (bit string permutations)
         for basis_state in generate_bit_string_permutations(n=self.circuit_size):
@@ -335,20 +383,16 @@ class SYMQCircuit:
                 _rs_basis_state_ = list(basis_state)
                 # Note reverse indexing to match qiskit convention
                 _rs_basis_state_[-(target_qubit + 1)] = _flip_[basis_state[-(target_qubit + 1)]]
-                _rs_basis_state_ = ''.join(_rs_basis_state_)
-                _rs_basis_state_vector_ = SYMQState(state=_rs_basis_state_).get_statevector()
-
-                _ls_basis_state_vector_ = SYMQState(state=basis_state).get_statevector()
-                _mat_rep_ += np.outer(_ls_basis_state_vector_, _rs_basis_state_vector_)
+                _row_index_, _col_index_ = int(''.join(_rs_basis_state_), 2), int(basis_state, 2)
+                _mat_rep_[_row_index_, _col_index_] = 1
             else:
                 # If the control qubit is in state 0, apply an identity operation to the basis state
-                _basis_state_vector_ = SYMQState(state=basis_state).get_statevector()
-                _mat_rep_ += np.outer(_basis_state_vector_, _basis_state_vector_)
+                _mat_rep_[int(basis_state, 2), int(basis_state, 2)] = 1
 
         # Update the circuit unitary with the CNOT operation
-        self._update_circuit_unitary_(_mat_rep_)
+        self._update_circuit_unitary_(_mat_rep_.tocsr())
 
-    def _get_cnot_mat(self, target_qubit: int, control_qubit: int):
+    def _get_cnot_mat(self, target_qubit: int, control_qubit: int) -> csr_matrix:
         """
         Get the matrix representation of the controlled-NOT (CNOT) gate for the given target and control qubits.
 
@@ -360,10 +404,12 @@ class SYMQCircuit:
             np.ndarray: The matrix representation of the CNOT gate.
         """
 
+        self._validity_(target_qubit=target_qubit, control_qubit=control_qubit)
+
         _flip_ = {'0': '1', '1': '0'}
 
-        # Create a matrix representation of the CNOT gate
-        _mat_rep_ = np.zeros_like(self.__circuit_unitary__)
+        # Create a matrix representation of the circuit unitary
+        _mat_rep_ = lil_matrix(self.__circuit_unitary__.shape, dtype=self.dtype)
 
         # Iterate over all possible basis states (bit string permutations)
         for basis_state in generate_bit_string_permutations(n=self.circuit_size):
@@ -375,17 +421,13 @@ class SYMQCircuit:
                 _rs_basis_state_ = list(basis_state)
                 # Note reverse indexing to match qiskit convention
                 _rs_basis_state_[-(target_qubit + 1)] = _flip_[basis_state[-(target_qubit + 1)]]
-                _rs_basis_state_ = ''.join(_rs_basis_state_)
-                _rs_basis_state_vector_ = SYMQState(state=_rs_basis_state_).get_statevector()
-
-                _ls_basis_state_vector_ = SYMQState(state=basis_state).get_statevector()
-                _mat_rep_ += np.outer(_ls_basis_state_vector_, _rs_basis_state_vector_)
+                _row_index_, _col_index_ = int(''.join(_rs_basis_state_), 2), int(basis_state, 2)
+                _mat_rep_[_row_index_, _col_index_] = 1
             else:
                 # If the control qubit is in state 0, apply an identity operation to the basis state
-                _basis_state_vector_ = SYMQState(state=basis_state).get_statevector()
-                _mat_rep_ += np.outer(_basis_state_vector_, _basis_state_vector_)
+                _mat_rep_[int(basis_state, 2), int(basis_state, 2)] = 1
 
-        return _mat_rep_
+        return _mat_rep_.tocsr()
 
     def add_cx(self, target_qubit: int, control_qubit: int) -> None:
         """
@@ -596,14 +638,15 @@ class SYMQCircuit:
         # TODO: add impl of this.
         pass
 
-    def get_circuit_unitary(self):
+    def get_circuit_unitary(self) -> np.ndarray:
         """
         Get the unitary representation of the quantum circuit.
 
         Returns:
             np.ndarray: The unitary representation as a numpy array.
         """
-        return self.__circuit_unitary__
+
+        return self.__circuit_unitary__.todense()
 
     def get_state_vector(self):
         """
@@ -612,8 +655,8 @@ class SYMQCircuit:
         Returns:
             np.ndarray: The state vector as a numpy array.
         """
-        __state_vector__ = np.array([1.0] + [0.0 for _ in range(2 ** self.circuit_size - 1)], dtype=complex)
-        return self.__circuit_unitary__ @ __state_vector__
+        __state_vector__ = np.array([1.0] + [0.0 for _ in range(2 ** self.circuit_size - 1)], dtype=self.dtype)
+        return self.get_circuit_unitary() @ __state_vector__
 
     def get_state_probabilities(self) -> dict:
         """
@@ -622,9 +665,8 @@ class SYMQCircuit:
         Returns:
             dict: A dictionary containing the basis state as keys and their respective probabilities as values.
         """
-        _state_vector_ = self.get_state_vector()
         _probs_ = {}
-        for n, c_n in enumerate(_state_vector_):
-            _state_string_ = represent_integer_with_bits(number=n, nr_bits=int(np.log2(len(_state_vector_))))
+        for n, c_n in enumerate(self.get_state_vector().tolist()[0]):
+            _state_string_ = represent_integer_with_bits(number=n, nr_bits=int(self.circuit_size))
             _probs_[_state_string_] = np.power(np.linalg.norm(c_n), 2)
         return _probs_

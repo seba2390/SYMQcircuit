@@ -47,3 +47,7 @@ def _get_state_probabilities_(state_vector_: np.ndarray) -> dict:
         _state_string_ = represent_integer_with_bits(number=n, nr_bits=int(np.log2(len(_state_vector_))))
         _probs_[_state_string_] = np.power(np.linalg.norm(c_n), 2)
     return _probs_
+
+
+def sparsity(matrix: np.ndarray) -> float:
+    return 1.0 - np.sum(matrix != 0.0) / (matrix.shape[0] * matrix.shape[1])
