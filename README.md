@@ -20,7 +20,7 @@ Utilizes Scipy sparse matrix structure[^1] to improve memory consumption and com
 
 ```python
 from qiskit.visualization import plot_histogram
-from SYMQCircuit import *
+from src.SYMQCircuit import *
 
 # Defining number of qubits in circuit
 _N_QUBITS_ = 3
@@ -28,13 +28,13 @@ _N_QUBITS_ = 3
 # Creating instance of circuit
 my_circuit = SYMQCircuit(nr_qubits=_N_QUBITS_)
 
-#Adding H to all qubits in circuit
+# Adding H to all qubits in circuit
 for q in range(_N_QUBITS_):
     my_circuit.add_h(target_qubit=q)
-    
+
 # Adding miscellaneous gates to circuit 
 my_circuit.add_cnot(target_qubit=2, control_qubit=0)
-my_circuit.add_rz(target_qubit=1, angle=np.pi/2)
+my_circuit.add_rz(target_qubit=1, angle=np.pi / 2)
 my_circuit.add_cry(target_qubit=2, control_qubit=1, angle=np.pi / 7)
 
 # Retrieving state vector

@@ -1,3 +1,4 @@
+from typing import *
 import numpy as np
 
 
@@ -51,3 +52,5 @@ def _get_state_probabilities_(state_vector_: np.ndarray) -> dict:
 
 def sparsity(matrix: np.ndarray) -> float:
     return 1.0 - np.sum(matrix != 0.0) / (matrix.shape[0] * matrix.shape[1])
+
+

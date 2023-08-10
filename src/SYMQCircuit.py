@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.sparse import csr_matrix, lil_matrix, kron, identity
 
-from Tools import *
-from SYMQState import *
+from src.Tools import *
+from src.SYMQState import *
 
 
 class SYMQCircuit:
@@ -278,6 +278,7 @@ class SYMQCircuit:
         self._validity_(target_qubit=target_qubit)
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=self._h_gate_)
         self._update_circuit_unitary_(_mat_rep_)
+
 
     def add_rx(self, target_qubit: int, angle: float) -> None:
         """
