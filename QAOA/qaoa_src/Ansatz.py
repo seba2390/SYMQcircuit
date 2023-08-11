@@ -1,20 +1,30 @@
+import numpy as np
+
 from src.SYMQCircuit import *
 from QAOA.qaoa_src.QAOATools import *
 
 
 class QAOAansatz:
-    def __init__(self, n_qubits: int, qubo_edges: Dict[Tuple[int, int], float], precision: int = 64):
+    def __init__(self, n_qubits: int, w_edges: List[Tuple[int, int, float]], precision: int = 64):
 
         self.n_qubits = n_qubits
-        self.qubo_edges = qubo_edges
+        self.w_edges = w_edges
         self.precision = precision
 
+        # --------- QUBO --------- #
+        self.QUBO_mat = get_qubo(size=self.n_qubits, edges=self.w_edges)
+        QUBO_dict = {}
+        for row in range(self.QUBO_mat.shape[0]):
+            for col in range(self.QUBO_mat.shape[1]):
+                if self.QUBO_mat[row, col] != 0.0:
+                    QUBO_dict[(row, col)] = self.QUBO_mat[row, col]
+
+        # --------- Ising --------- #
         self.h_vec = np.zeros(shape=(self.n_qubits, 1), dtype=float)
         self.J_mat = np.zeros(shape=(self.n_qubits, self.n_qubits), dtype=float)
-        h_dict, J_dict, offset = qubo_to_ising(Q=self.qubo_edges)
+        h_dict, J_dict, offset = qubo_to_ising(Q=QUBO_dict)
         self.h_list = [(key, h_dict[key]) for key in h_dict.keys()]
         self.J_list = [(key[0], key[1], J_dict[key]) for key in J_dict.keys()]
-
         for i, val in self.h_list:
             self.h_vec[i] = val
         for i, j, val in self.J_list:
@@ -47,7 +57,7 @@ class QAOAansatz:
         """
         # Number of alternating (Cost,Mixer) unitaries
         p = len(theta) // 2
-        #print(theta)
+        # print(theta)
 
         # Initializing Q circuit
         qcircuit = SYMQCircuit(nr_qubits=self.n_qubits, precision=64)
@@ -95,6 +105,18 @@ class QAOAansatz:
         """
         return float(state.T @ (self.J_mat @ state) + state.T @ self.h_vec)
 
+    def QUBO_cost(self, state: np.ndarray, offset: float = 0.0) -> float:
+        """
+        Calculate the Ising cost for a given spin configuration.
+
+        Parameters:
+        state (np.ndarray): Array representing the spin configuration.
+
+        Returns:
+        float: The computed Ising cost.
+        """
+        return float(state.T @ (self.QUBO_mat @ state)) + offset
+
     def compute_expectation(self, counts: dict) -> float:
         """
         Compute the expectation value based on measurement results.
@@ -108,11 +130,12 @@ class QAOAansatz:
         _state_ = np.zeros(shape=self.h_vec.shape, dtype=float)
         _result_ = 0.0
         for bitstring, probability in counts.items():
-            _state_ = np.array(list(bitstring)).reshape((self.n_qubits,1)).astype(int)
-            _result_ += self.Ising_cost(state=_state_) * probability
+            _state_ = np.array(list(bitstring)).reshape((self.n_qubits, 1)).astype(int)
+            #_result_ -= self.QUBO_cost(state=_state_) * probability
+            _result_ += np.sum(-0.5 * (np.ones_like(_state_) - _state_)) * probability
         return _result_
 
-    def execute_circuit(self, theta: List[float]):
+    def evaluate_circuit(self, theta: List[float]):
         """
         Execute a quantum circuit with the given parameters and compute the expectation value.
 
