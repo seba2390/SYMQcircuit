@@ -205,11 +205,11 @@ class QAOAansatz:
 
         if self.backend == "SYMQ":
             current_circuit = self.set_circuit(theta=theta)
-            prob_distribution = current_circuit.get_state_probabilities()
+            prob_distribution = current_circuit.get_state_probabilities(reverse_states=True)
             return self.compute_expectation(counts=prob_distribution)
         else:
             backend = BasicAer.get_backend("statevector_simulator")
             current_circuit = self.set_QISKIT_circuit(theta=theta)
             prob_distribution = _get_state_probabilities_(
-                state_vector_=execute(current_circuit, backend).result().get_statevector())
+                state_vector_=execute(current_circuit, backend).result().get_statevector(),reverse_states=True)
         return self.compute_expectation(counts=prob_distribution)

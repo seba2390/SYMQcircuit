@@ -35,7 +35,7 @@ def generate_bit_string_permutations(n: int) -> str:
         yield _binary_string_
 
 
-def _get_state_probabilities_(state_vector_: np.ndarray) -> dict:
+def _get_state_probabilities_(state_vector_: np.ndarray, reverse_states: bool = False) -> dict:
     """
     Calculate the probabilities of each basis state in a quantum state.
 
@@ -46,6 +46,8 @@ def _get_state_probabilities_(state_vector_: np.ndarray) -> dict:
     _probs_ = {}
     for n, c_n in enumerate(_state_vector_):
         _state_string_ = represent_integer_with_bits(number=n, nr_bits=int(np.log2(len(_state_vector_))))
+        if reverse_states:
+            _state_string_ = _state_string_[::-1]
         _probs_[_state_string_] = np.power(np.linalg.norm(c_n), 2)
     return _probs_
 

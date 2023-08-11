@@ -781,9 +781,10 @@ class SYMQCircuit:
         __state_vector__ = np.array([1.0] + [0.0 for _ in range(2 ** self.circuit_size - 1)], dtype=self.dtype)
         return self.get_circuit_unitary() @ __state_vector__
 
-    def get_state_probabilities(self) -> dict:
+    def get_state_probabilities(self, reverse_states: bool = False) -> dict:
         """
         Calculate the probabilities of each basis state in a quantum state.
+        N.B. as circuit
 
         Returns:
             dict: A dictionary containing the basis state as keys and their respective probabilities as values.
@@ -791,5 +792,7 @@ class SYMQCircuit:
         _probs_ = {}
         for n, c_n in enumerate(self.get_state_vector().tolist()[0]):
             _state_string_ = represent_integer_with_bits(number=n, nr_bits=int(self.circuit_size))
+            if reverse_states:
+                _state_string_ = _state_string_[::-1]
             _probs_[_state_string_] = np.power(np.linalg.norm(c_n), 2)
         return _probs_
