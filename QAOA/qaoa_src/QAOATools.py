@@ -44,15 +44,24 @@ def qubo_min_cost_partition(nr_nodes: int,
     return min_cost, min_perm
 
 
-def get_qubo(size: int, edges: List[Tuple[int, int, float]]) -> np.ndarray:
+def get_qubo(size: int, edges: List[Tuple[int, int, float]], mat_type: str = 'UT') -> np.ndarray:
     """
     :param size: number of nodes in graph.
     :param edges: list of edges w. corresponding weight.
     :return: Upper triangular matrix of QUBO model, i.e. Q in x^TQx.
+
     """
+    if mat_type not in ['UT', 'SYM']:
+        raise ValueError("mat_type should be one of: ", ['UT', 'SYM'])
+
     _Q = np.zeros(shape=(size, size), dtype=float)
     for _i, _j, _w in edges:
-        _Q[_i, _j] += 2 * _w
+        if mat_type == 'UT':
+            _Q[_i, _j] += 2 * _w
+        else:
+            _Q[_i, _j] += _w
+            _Q[_j, _i] += _w
+
         _Q[_i, _i] -= 1 * _w
         _Q[_j, _j] -= 1 * _w
     return _Q
@@ -219,3 +228,21 @@ def draw_graph(G: nx.Graph, colors: List[str], pos: Dict[int, tuple]) -> None:
     nx.draw_networkx(G, node_color=colors, node_size=600, alpha=0.8, ax=default_axes, pos=pos)
     edge_labels = nx.get_edge_attributes(G, "weight")
     nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=edge_labels)
+
+
+def encode_Ising(Q: np.ndarray, g: np.ndarray = None, offset: float = 0.0) -> Tuple[np.ndarray, np.ndarray, float]:
+    _g = g
+    if _g is None:
+        _g = np.zeros(shape=(Q.shape[0], 1), dtype=float)
+
+    J = 0.25 * Q
+
+    h = np.zeros_like(_g)
+    for i in range(Q.shape[0]):
+        h -= (Q[:, i].reshape((Q.shape[0], 1)) + Q.T[:, i].reshape((Q.shape[0], 1))) * 0.25
+
+    h -= 0.5 * _g
+
+    const = np.sum(Q) * 0.25 + np.sum(_g) * 0.5 + offset
+
+    return J, h, const

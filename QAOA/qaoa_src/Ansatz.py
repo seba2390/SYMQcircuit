@@ -3,10 +3,23 @@ import numpy as np
 from src.SYMQCircuit import *
 from QAOA.qaoa_src.QAOATools import *
 
+from qiskit import QuantumCircuit, execute, transpile
+from qiskit.visualization import plot_histogram
+from qiskit import Aer
+
 
 class QAOAansatz:
-    def __init__(self, n_qubits: int, w_edges: List[Tuple[int, int, float]], precision: int = 64):
+    def __init__(self, n_qubits: int, w_edges: List[Tuple[int, int, float]], precision: int = 64, backend: str = "SYMQ"):
 
+        __backends__ = ["SYMQ", "QISKIT"]
+        if backend not in __backends__:
+            raise ValueError(f"Backend should be either one of: {__backends__}.")
+        if not isinstance(n_qubits, int):
+            raise ValueError(f"n_qubits should be integer.")
+        if n_qubits <= 0:
+            raise ValueError(f'n_qubits should be > 0, but is: {n_qubits}.')
+
+        self.backend = backend
         self.n_qubits = n_qubits
         self.w_edges = w_edges
         self.precision = precision
@@ -18,7 +31,7 @@ class QAOAansatz:
             for col in range(self.QUBO_mat.shape[1]):
                 if self.QUBO_mat[row, col] != 0.0:
                     QUBO_dict[(row, col)] = self.QUBO_mat[row, col]
-
+                    
         # --------- Ising --------- #
         self.h_vec = np.zeros(shape=(self.n_qubits, 1), dtype=float)
         self.J_mat = np.zeros(shape=(self.n_qubits, self.n_qubits), dtype=float)
@@ -79,19 +92,61 @@ class QAOAansatz:
             # Weighted RZZ gate for each edge
             for qubit_i, qubit_j, weight in self.J_list:
                 angle = 2 * gamma[irep] * weight
+                #print(f"Layer: {irep}, RZZ angle: {angle}, gamma: {gamma[irep]}, weight: {weight}")
                 qcircuit.add_rzz(qubit_1=qubit_i, qubit_2=qubit_j, angle=angle)
             # Weighted RZ gate for each qubit
             for qubit_i, weight in self.h_list:
-                angle = 2 * gamma[irep] * weight
+                angle = 2 * gamma[irep]
+                #print(f"Layer: {irep}, RZ angle: {angle}, gamma: {gamma[irep]}, weight: {weight}")
                 qcircuit.add_rz(target_qubit=qubit_i, angle=angle)
 
             # ------ Mixer unitary: ------ #
             # Mixer unitary: Weighted X rotation on each qubit
             for qubit_i, weight in self.h_list:
-                angle = 2 * beta[irep] * weight
+                angle = 2 * beta[irep]
+                #print(f"Layer: {irep}, RX angle: {angle}, beta: {beta[irep]}, weight: {weight}")
                 qcircuit.add_rx(target_qubit=qubit_i, angle=angle)
 
         return qcircuit
+
+    def set_QISKIT_circuit(self, theta: List[float]):
+
+        # Number of alternating (Cost,Mixer) unitaries
+        p = len(theta) // 2
+
+        # Initializing Q circuit
+        qc = QuantumCircuit(self.n_qubits)
+
+        # Gamma opt param for cost unitaries as last p vals.
+        gamma = theta[p:]
+
+        # Beta opt param for mixing unitaries as first p vals.
+        beta = theta[:p]
+
+        # Initial_state: Hadamard gate on each qbit
+        for qubit_index in range(self.n_qubits):
+            qc.h(qubit=qubit_index)
+
+        # For each Cost,Mixer repetition
+        for irep in range(0, p):
+
+            # ------ Cost unitary: ------ #
+            # Weighted RZZ gate for each edge
+            for qubit_i, qubit_j, weight in self.J_list:
+                angle = 2 * gamma[irep] * weight
+                qc.rzz(qubit1=qubit_i, qubit2=qubit_j, theta=angle)
+            # Weighted RZ gate for each qubit
+            for qubit_i, weight in self.h_list:
+                angle = 2 * gamma[irep]
+                qc.rz(qubit=qubit_i, phi=angle)
+
+            # ------ Mixer unitary: ------ #
+            # Mixer unitary: Weighted X rotation on each qubit
+            for qubit_i, weight in self.h_list:
+                angle = 2 * beta[irep]
+                qc.rx(qubit=qubit_i, theta=angle)
+
+        return qc
 
     def Ising_cost(self, state: np.ndarray) -> float:
         """
@@ -131,8 +186,7 @@ class QAOAansatz:
         _result_ = 0.0
         for bitstring, probability in counts.items():
             _state_ = np.array(list(bitstring)).reshape((self.n_qubits, 1)).astype(int)
-            #_result_ -= self.QUBO_cost(state=_state_) * probability
-            _result_ += np.sum(-0.5 * (np.ones_like(_state_) - _state_)) * probability
+            _result_ += self.QUBO_cost(state=_state_) * probability
         return _result_
 
     def evaluate_circuit(self, theta: List[float]):
