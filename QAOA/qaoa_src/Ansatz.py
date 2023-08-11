@@ -47,6 +47,7 @@ class QAOAansatz:
         """
         # Number of alternating (Cost,Mixer) unitaries
         p = len(theta) // 2
+        #print(theta)
 
         # Initializing Q circuit
         qcircuit = SYMQCircuit(nr_qubits=self.n_qubits, precision=64)
@@ -123,6 +124,4 @@ class QAOAansatz:
         """
         current_circuit = self.set_circuit(theta=theta)
         prob_distribution = current_circuit.get_state_probabilities()
-        _result_ = self.compute_expectation(counts=prob_distribution)
-        print(_result_)
-        return _result_
+        return self.compute_expectation(counts=prob_distribution)
