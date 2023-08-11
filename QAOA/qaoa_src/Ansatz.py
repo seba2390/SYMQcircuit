@@ -1,15 +1,16 @@
 import numpy as np
 
 from src.SYMQCircuit import *
+from src.Tools import _get_state_probabilities_
 from QAOA.qaoa_src.QAOATools import *
 
-from qiskit import QuantumCircuit, execute, transpile
-from qiskit.visualization import plot_histogram
-from qiskit import Aer
+from qiskit import QuantumCircuit, execute
+from qiskit import BasicAer
 
 
 class QAOAansatz:
-    def __init__(self, n_qubits: int, w_edges: List[Tuple[int, int, float]], precision: int = 64, backend: str = "SYMQ"):
+    def __init__(self, n_qubits: int, w_edges: List[Tuple[int, int, float]], precision: int = 64,
+                 backend: str = "SYMQ"):
 
         __backends__ = ["SYMQ", "QISKIT"]
         if backend not in __backends__:
@@ -31,7 +32,7 @@ class QAOAansatz:
             for col in range(self.QUBO_mat.shape[1]):
                 if self.QUBO_mat[row, col] != 0.0:
                     QUBO_dict[(row, col)] = self.QUBO_mat[row, col]
-                    
+
         # --------- Ising --------- #
         self.h_vec = np.zeros(shape=(self.n_qubits, 1), dtype=float)
         self.J_mat = np.zeros(shape=(self.n_qubits, self.n_qubits), dtype=float)
@@ -92,19 +93,19 @@ class QAOAansatz:
             # Weighted RZZ gate for each edge
             for qubit_i, qubit_j, weight in self.J_list:
                 angle = 2 * gamma[irep] * weight
-                #print(f"Layer: {irep}, RZZ angle: {angle}, gamma: {gamma[irep]}, weight: {weight}")
+                # print(f"Layer: {irep}, RZZ angle: {angle}, gamma: {gamma[irep]}, weight: {weight}")
                 qcircuit.add_rzz(qubit_1=qubit_i, qubit_2=qubit_j, angle=angle)
             # Weighted RZ gate for each qubit
             for qubit_i, weight in self.h_list:
                 angle = 2 * gamma[irep]
-                #print(f"Layer: {irep}, RZ angle: {angle}, gamma: {gamma[irep]}, weight: {weight}")
+                # print(f"Layer: {irep}, RZ angle: {angle}, gamma: {gamma[irep]}, weight: {weight}")
                 qcircuit.add_rz(target_qubit=qubit_i, angle=angle)
 
             # ------ Mixer unitary: ------ #
             # Mixer unitary: Weighted X rotation on each qubit
             for qubit_i, weight in self.h_list:
                 angle = 2 * beta[irep]
-                #print(f"Layer: {irep}, RX angle: {angle}, beta: {beta[irep]}, weight: {weight}")
+                # print(f"Layer: {irep}, RX angle: {angle}, beta: {beta[irep]}, weight: {weight}")
                 qcircuit.add_rx(target_qubit=qubit_i, angle=angle)
 
         return qcircuit
@@ -177,7 +178,8 @@ class QAOAansatz:
         Compute the expectation value based on measurement results.
 
         Parameters:
-        counts (dict): A dictionary containing bitstring measurement outcomes as keys and their corresponding probabilities as values.
+        counts (dict): A dictionary containing bitstring measurement outcomes as keys and their corresponding
+        probabilities as values.
 
         Returns:
         float: The computed expectation value.
@@ -186,6 +188,7 @@ class QAOAansatz:
         _result_ = 0.0
         for bitstring, probability in counts.items():
             _state_ = np.array(list(bitstring)).reshape((self.n_qubits, 1)).astype(int)
+            # N.B. Q has been multiplied with -1, therefore we are doing += instead of -= here.
             _result_ += self.QUBO_cost(state=_state_) * probability
         return _result_
 
@@ -199,6 +202,14 @@ class QAOAansatz:
         Returns:
         float: The computed expectation value.
         """
-        current_circuit = self.set_circuit(theta=theta)
-        prob_distribution = current_circuit.get_state_probabilities()
+
+        if self.backend == "SYMQ":
+            current_circuit = self.set_circuit(theta=theta)
+            prob_distribution = current_circuit.get_state_probabilities()
+            return self.compute_expectation(counts=prob_distribution)
+        else:
+            backend = BasicAer.get_backend("statevector_simulator")
+            current_circuit = self.set_QISKIT_circuit(theta=theta)
+            prob_distribution = _get_state_probabilities_(
+                state_vector_=execute(current_circuit, backend).result().get_statevector())
         return self.compute_expectation(counts=prob_distribution)

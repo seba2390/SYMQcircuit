@@ -8,6 +8,7 @@ from src.SYMQState import *
 class SYMQCircuit:
     def __init__(self, nr_qubits: int, precision: int = 64):
 
+        # N.B. 64 bit = 32 bit real and 32 bit imag, whereas 128 = 64 bit real and 64 bit imag.
         _dtypes_ = {64: np.complex64, 128: np.complex128}
         if precision not in list(_dtypes_.keys()):
             raise ValueError('Unrecognized nr. of bits for precision, should be either of: {16,32,64,128}.')
