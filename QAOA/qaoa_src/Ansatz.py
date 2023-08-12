@@ -74,7 +74,7 @@ class QAOAansatz:
         # print(theta)
 
         # Initializing Q circuit
-        qcircuit = SYMQCircuit(nr_qubits=self.n_qubits, precision=64)
+        qcircuit = SYMQCircuit(nr_qubits=self.n_qubits, precision=self.precision)
 
         # Gamma opt param for cost unitaries as last p vals.
         gamma = theta[p:]
