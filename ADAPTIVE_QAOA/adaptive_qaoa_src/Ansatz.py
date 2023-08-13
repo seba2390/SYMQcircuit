@@ -49,7 +49,7 @@ class ADAPTIVEQAOAansatz:
             self.ISING_mat[i, j] = val
 
         # ---------- Algorithm ----------- #
-        self.current_circuit = SYMQCircuit(nr_qubits=self.n_qubits,precision=self.precision)
+        self.current_circuit = SYMQCircuit(nr_qubits=self.n_qubits, precision=self.precision)
         self.cost_hamilton_matrix = self.get_cost_hamiltonian()
         self.mixer_gate_pool = self.get_gate_pool(kind='SINGLE')
 
@@ -109,12 +109,12 @@ class ADAPTIVEQAOAansatz:
 
             # ------ Mixer unitary: ------ #
             # Get e^{-i*H_c*gamma}|psi_p>
-            state_vector = self.current_circuit.get_state_vector().reshape((self.n_qubits**2, 1))
+            state_vector = self.current_circuit.get_state_vector().reshape((self.n_qubits ** 2, 1))
             # Initialize max expectation
             max_expectation, best_mixer = 0.0, None
             # Get gate pool
             for gates in self.mixer_gate_pool:
-                mixer = np.eye(self.n_qubits**2, dtype={64: np.complex64, 128: np.complex128}[self.precision])
+                mixer = np.eye(self.n_qubits ** 2, dtype={64: np.complex64, 128: np.complex128}[self.precision])
                 for qubits, pauli_operators in gates.items():
                     # 2-qubit Pauli string
                     if isinstance(pauli_operators, tuple):
@@ -129,7 +129,7 @@ class ADAPTIVEQAOAansatz:
                         mixer += self.get_mixer_hamiltonian(pauli_operator=operator, target_qubit=qubit)
                 # Calculate expectation
                 commutator = self.get_commutator(A=self.cost_hamilton_matrix, B=mixer)
-                expectation = np.abs(1j*(state_vector.T @ (commutator @ state_vector))[0, 0])
+                expectation = np.abs(1j * (state_vector.T @ (commutator @ state_vector))[0, 0])
                 # Compare expectation
                 if expectation > max_expectation:
                     max_expectation = expectation
@@ -137,18 +137,19 @@ class ADAPTIVEQAOAansatz:
 
             # Set mixer
             for qubits, pauli_operators in best_mixer.items():
-
+                # TODO: Fix this so that pauli_string has appropriate length
                 # N.B. works for both 1 and 2-qubit pauli strings
                 pauli_string = ''.join(pauli_operators)
                 angle = 2 * beta[irep]
-                self.current_circuit.add_exp_of_pauli_string(pauli_string=pauli_string,theta=angle)
-
+                self.current_circuit.add_exp_of_pauli_string(pauli_string=pauli_string, theta=angle)
 
     @staticmethod
     def get_commutator(A: np.ndarray, B: np.ndarray):
         return np.matmul(A, B) - np.matmul(B, A)
 
     def set_QISKIT_circuit(self, theta: List[float]):
+
+        # TODO: Fix this for ADAPTIVE QAOA
 
         # Number of alternating (Cost,Mixer) unitaries
         p = len(theta) // 2
