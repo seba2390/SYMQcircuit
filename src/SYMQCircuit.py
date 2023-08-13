@@ -12,22 +12,23 @@ class SYMQCircuit:
         _dtypes_ = {64: np.complex64, 128: np.complex128}
         if precision not in list(_dtypes_.keys()):
             raise ValueError('Unrecognized nr. of bits for precision, should be either of: {16,32,64,128}.')
-        self.dtype = _dtypes_[precision]
+        self.precision = precision
+        self.dtype = _dtypes_[self.precision]
 
         if nr_qubits <= 0:
             raise ValueError(f"Circuit size: '{nr_qubits}' should be positive int.")
 
         self.circuit_size = nr_qubits
         self.__circuit_unitary__ = identity(2 ** nr_qubits, format='csr', dtype=self.dtype)
-        self.__state_vector__ = csr_matrix(np.array([1.0] + [0.0 for _ in range(2 ** nr_qubits - 1)], dtype=self.dtype ))
+        self.__state_vector__ = csr_matrix(np.array([1.0] + [0.0 for _ in range(2 ** nr_qubits - 1)], dtype=self.dtype))
 
         self._identity_ = identity(2, format='csr', dtype=self.dtype)
 
-        self._x_gate_ = csr_matrix(np.array([[0, 1], [1, 0]], dtype=self.dtype ))
-        self._y_gate_ = csr_matrix(np.array([[0, -1j], [1j, 0]], dtype=self.dtype ))
-        self._z_gate_ = csr_matrix(np.array([[1, 0], [0, -1]], dtype=self.dtype ))
+        self._x_gate_ = csr_matrix(np.array([[0, 1], [1, 0]], dtype=self.dtype))
+        self._y_gate_ = csr_matrix(np.array([[0, -1j], [1j, 0]], dtype=self.dtype))
+        self._z_gate_ = csr_matrix(np.array([[1, 0], [0, -1]], dtype=self.dtype))
 
-        self._h_gate_ = csr_matrix((1.0 / np.sqrt(2.0)) * np.array([[1, 1], [1, -1]], dtype=self.dtype ))
+        self._h_gate_ = csr_matrix((1.0 / np.sqrt(2.0)) * np.array([[1, 1], [1, -1]], dtype=self.dtype))
 
     ###############################################################
     ####################### GENERIC METHODS #######################
@@ -204,8 +205,6 @@ class SYMQCircuit:
             if control_qubit == target_qubit:
                 raise ValueError(f"Control qubit should be different from target qubit.")
 
-
-
     ###############################################################
     ######################## 1 QUBIT GATES ########################
     ###############################################################
@@ -280,7 +279,6 @@ class SYMQCircuit:
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=self._h_gate_)
         self._update_circuit_unitary_(_mat_rep_)
 
-
     def add_rx(self, target_qubit: int, angle: float) -> None:
         """
         Apply the rotation around the X-axis gate to the target qubit.
@@ -325,7 +323,8 @@ class SYMQCircuit:
             ValueError: If the target qubit index is out of range for the circuit size.
         """
         self._validity_(target_qubit=target_qubit)
-        _rz_gate_ = csr_matrix(np.array([[np.exp(-1j * angle / 2), 0.0], [0.0, np.exp(1j * angle / 2)]], dtype=self.dtype ))
+        _rz_gate_ = csr_matrix(
+            np.array([[np.exp(-1j * angle / 2), 0.0], [0.0, np.exp(1j * angle / 2)]], dtype=self.dtype))
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_rz_gate_)
         self._update_circuit_unitary_(_mat_rep_)
 
@@ -423,9 +422,9 @@ class SYMQCircuit:
 
         # Define the U gate matrix representation
         _u_gate_ = csr_matrix(np.array([[np.cos(angle_1 / 2), -np.exp(1j * angle_3) * np.sin(angle_1 / 2)],
-                             [np.exp(1j * angle_2) * np.sin(angle_1 / 2),
-                              np.exp(1j * (angle_2 + angle_3)) * np.cos(angle_1 / 2)]],
-                            dtype=self.dtype))
+                                        [np.exp(1j * angle_2) * np.sin(angle_1 / 2),
+                                         np.exp(1j * (angle_2 + angle_3)) * np.cos(angle_1 / 2)]],
+                                       dtype=self.dtype))
 
         # Compute the tensor product matrix representation for the U gate on the target qubit
         _mat_rep_ = self._single_qubit_tensor_prod_matrix_rep_(target_qubit=target_qubit, gate_mat_rep=_u_gate_)
@@ -757,18 +756,57 @@ class SYMQCircuit:
         # Apply CX (CNOT) gate with control_qubit controlling the target_qubit again
         self.add_cx(target_qubit=target_qubit, control_qubit=control_qubit)
 
+    def add_exp_of_pauli_string(self, pauli_string: str, theta: float) -> None:
+        """
+        Adds the exponential of a Pauli string to the quantum circuit.
+
+        Args:
+            pauli_string (str): Pauli string containing only 'I', 'X', 'Y', or 'Z'.
+            theta (float): Parameter for the exponential.
+
+        Raises:
+            ValueError: If pauli_string has an inappropriate length or contains invalid characters.
+
+        The exponential of a Pauli string P is calculated as:
+        e^(-i*P*theta) = cos(theta) * I - i * sin(theta) * P
+
+        The resulting unitary gate is added to the quantum circuit.
+
+        """
+        if len(pauli_string) != self.circuit_size or not all(c in 'IXYZ' for c in pauli_string):
+            raise ValueError(f"Invalid Pauli string: {pauli_string} - should have appropriate length and only contain I,X,Y,Z")
+
+        final_circuit = SYMQCircuit(nr_qubits=self.circuit_size, precision=self.precision)
+        _target_qubit_ = 0
+        for P_i in pauli_string:
+            circuit = SYMQCircuit(nr_qubits=self.circuit_size, precision=self.precision)
+            if P_i == 'X':
+                circuit.add_x(target_qubit=_target_qubit_)
+            elif P_i == 'Y':
+                circuit.add_y(target_qubit=_target_qubit_)
+            elif P_i == 'Z':
+                circuit.add_z(target_qubit=_target_qubit_)
+            final_circuit = final_circuit + circuit
+            _target_qubit_ += 1
+        _I_ = identity(2**self.circuit_size, format='csr', dtype=self.dtype)
+        _P_ = final_circuit.get_circuit_unitary(as_sparse=True)
+
+        final_mat_rep = np.cos(theta) * _I_ - 1j * np.sin(theta) * _P_
+        self.__circuit_unitary__ = final_mat_rep @ self.__circuit_unitary__
+
     def add_cu(self):
         # TODO: add impl of this.
         pass
 
-    def get_circuit_unitary(self) -> np.ndarray:
+    def get_circuit_unitary(self, as_sparse: bool = False) -> Union[np.ndarray, csr_matrix]:
         """
         Get the unitary representation of the quantum circuit.
 
         Returns:
             np.ndarray: The unitary representation as a numpy array.
         """
-
+        if as_sparse:
+            return self.__circuit_unitary__
         return self.__circuit_unitary__.todense()
 
     def get_state_vector(self):

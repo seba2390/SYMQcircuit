@@ -49,7 +49,7 @@ class ADAPTIVEQAOAansatz:
             self.ISING_mat[i, j] = val
 
         # ---------- Algorithm ----------- #
-        self.current_circuit = None
+        self.current_circuit = SYMQCircuit(nr_qubits=self.n_qubits,precision=self.precision)
         self.cost_hamilton_matrix = self.get_cost_hamiltonian()
         self.mixer_gate_pool = self.get_gate_pool(kind='SINGLE')
 
@@ -82,9 +82,6 @@ class ADAPTIVEQAOAansatz:
         p = len(theta) // 2
         # print(theta)
 
-        # Initializing Q circuit
-        qcircuit = SYMQCircuit(nr_qubits=self.n_qubits, precision=self.precision)
-
         # Gamma opt param for cost unitaries as last p vals.
         gamma = theta[p:]
 
@@ -93,7 +90,7 @@ class ADAPTIVEQAOAansatz:
 
         # Initial_state: Hadamard gate on each qbit
         for qubit_index in range(self.n_qubits):
-            qcircuit.add_h(target_qubit=qubit_index)
+            self.current_circuit.add_h(target_qubit=qubit_index)
 
         # For each Cost,Mixer repetition
         for irep in range(0, p):
@@ -103,16 +100,18 @@ class ADAPTIVEQAOAansatz:
             for qubit_i, qubit_j, weight in self.J_list:
                 angle = 2 * gamma[irep] * weight
                 # print(f"Layer: {irep}, RZZ angle: {angle}, gamma: {gamma[irep]}, weight: {weight}")
-                qcircuit.add_rzz(qubit_1=qubit_i, qubit_2=qubit_j, angle=angle)
+                self.current_circuit.add_rzz(qubit_1=qubit_i, qubit_2=qubit_j, angle=angle)
             # Weighted RZ gate for each qubit
             for qubit_i, weight in self.h_list:
                 angle = 2 * gamma[irep]
                 # print(f"Layer: {irep}, RZ angle: {angle}, gamma: {gamma[irep]}, weight: {weight}")
-                qcircuit.add_rz(target_qubit=qubit_i, angle=angle)
+                self.current_circuit.add_rz(target_qubit=qubit_i, angle=angle)
 
             # ------ Mixer unitary: ------ #
-            # Get |psi_p>
-            state_vector = qcircuit.get_state_vector().reshape((self.n_qubits**2, 1))
+            # Get e^{-i*H_c*gamma}|psi_p>
+            state_vector = self.current_circuit.get_state_vector().reshape((self.n_qubits**2, 1))
+            # Initialize max expectation
+            max_expectation, best_mixer = 0.0, None
             # Get gate pool
             for gates in self.mixer_gate_pool:
                 mixer = np.eye(self.n_qubits**2, dtype={64: np.complex64, 128: np.complex128}[self.precision])
@@ -130,9 +129,20 @@ class ADAPTIVEQAOAansatz:
                         mixer += self.get_mixer_hamiltonian(pauli_operator=operator, target_qubit=qubit)
                 # Calculate expectation
                 commutator = self.get_commutator(A=self.cost_hamilton_matrix, B=mixer)
-                expectation = 1j*(state_vector.T @ (commutator @ state_vector))[0, 0]
-                print(expectation)
-        self.current_circuit = qcircuit
+                expectation = np.abs(1j*(state_vector.T @ (commutator @ state_vector))[0, 0])
+                # Compare expectation
+                if expectation > max_expectation:
+                    max_expectation = expectation
+                    best_mixer = gates
+
+            # Set mixer
+            for qubits, pauli_operators in best_mixer.items():
+
+                # N.B. works for both 1 and 2-qubit pauli strings
+                pauli_string = ''.join(pauli_operators)
+                angle = 2 * beta[irep]
+                self.current_circuit.add_exp_of_pauli_string(pauli_string=pauli_string,theta=angle)
+
 
     @staticmethod
     def get_commutator(A: np.ndarray, B: np.ndarray):
