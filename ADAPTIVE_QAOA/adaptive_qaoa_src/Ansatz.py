@@ -144,7 +144,7 @@ class ADAPTIVEQAOAansatz:
                 self.current_circuit.add_exp_of_pauli_string(pauli_string=pauli_string, theta=angle)
 
     @staticmethod
-    def get_commutator(A: np.ndarray, B: np.ndarray):
+    def get_commutator(A: np.ndarray, B: np.ndarray) -> np.ndarray:
         return np.matmul(A, B) - np.matmul(B, A)
 
     def create_pauli_string(self, gates: Union[str, Tuple[str, ...]], indices: Union[int, Tuple[int, ...]]) -> str:
