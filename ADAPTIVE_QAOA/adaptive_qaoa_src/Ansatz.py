@@ -137,15 +137,35 @@ class ADAPTIVEQAOAansatz:
 
             # Set mixer
             for qubits, pauli_operators in best_mixer.items():
-                # TODO: Fix this so that pauli_string has appropriate length
                 # N.B. works for both 1 and 2-qubit pauli strings
-                pauli_string = ''.join(pauli_operators)
+                pauli_string = self.create_pauli_string(gates=pauli_operators, indices=qubits)
                 angle = 2 * beta[irep]
                 self.current_circuit.add_exp_of_pauli_string(pauli_string=pauli_string, theta=angle)
 
     @staticmethod
     def get_commutator(A: np.ndarray, B: np.ndarray):
         return np.matmul(A, B) - np.matmul(B, A)
+
+    def create_pauli_string(self, gates: Union[str, Tuple[str, ...]], indices: Union[int, Tuple[int, ...]]) -> str:
+        """
+        Generate a gate string based on the provided gates and indices.
+
+        Parameters:
+            gates (Union[str, tuple]): Gate symbol or tuple of gate symbols (e.g., 'X', ('X', 'Y')).
+            indices (Union[int, tuple]): Index or tuple of indices where gates should be placed.
+
+        Returns:
+            str: Generated gate string.
+        """
+        if isinstance(gates, str):
+            gates = (gates,)
+        if isinstance(indices, int):
+            indices = (indices,)
+
+        gate_string = ['I'] * self.n_qubits
+        for gate, index in zip(gates, indices):
+            gate_string[index] = gate
+        return ''.join(gate_string)
 
     def set_QISKIT_circuit(self, theta: List[float]):
 
