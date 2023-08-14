@@ -7,7 +7,7 @@ from src.SYMQCircuit import *
 from src.Tools import _get_state_probabilities_
 from ADAPTIVE_QAOA.adaptive_qaoa_src.ADAPTIVEQAOATools import *
 
-import qiskit
+from qiskit.quantum_info import Operator
 from qiskit import QuantumCircuit, execute
 from qiskit import BasicAer
 
@@ -51,7 +51,7 @@ class ADAPTIVEQAOAansatz:
         # ---------- Algorithm ----------- #
         self.current_circuit = SYMQCircuit(nr_qubits=self.n_qubits, precision=self.precision)
         self.cost_hamilton_matrix = self.get_cost_hamiltonian()
-        self.mixer_gate_pool = self.get_gate_pool(kind='SINGLE')
+        self.mixer_gate_pool = self.get_gate_pool(kind='MULTI')
 
     def set_circuit(self, theta: List[float]) -> None:
         """
@@ -111,7 +111,7 @@ class ADAPTIVEQAOAansatz:
             # Get e^{-i*H_c*gamma}|psi_p>
             state_vector = self.current_circuit.get_state_vector().reshape((self.n_qubits ** 2, 1))
             # Initialize max expectation
-            max_expectation, best_mixer = 0.0, None
+            max_expectation, best_mixer = -np.inf, None
             # Get gate pool
             for gates in self.mixer_gate_pool:
                 mixer = np.eye(self.n_qubits ** 2, dtype={64: np.complex64, 128: np.complex128}[self.precision])
@@ -129,7 +129,8 @@ class ADAPTIVEQAOAansatz:
                         mixer += self.get_mixer_hamiltonian(pauli_operator=operator, target_qubit=qubit)
                 # Calculate expectation
                 commutator = self.get_commutator(A=self.cost_hamilton_matrix, B=mixer)
-                expectation = np.abs(1j * (state_vector.T @ (commutator @ state_vector))[0, 0])
+                expectation = (-1j * (state_vector.T @ (commutator @ state_vector))[0, 0]).real
+
                 # Compare expectation
                 if expectation > max_expectation:
                     max_expectation = expectation
@@ -255,7 +256,7 @@ class ADAPTIVEQAOAansatz:
 
         return {'SINGLE': SINGLE_qubit_pool, 'MULTI': MULTI_qubit_pool}[kind]
 
-    def get_cost_hamiltonian(self):
+    def get_cost_hamiltonian(self) -> Union[np.ndarray, csr_matrix]:
         """ Getting the matrix representation of the cost hamiltonian H_c."""
 
         if self.backend == "SYMQ":
@@ -277,20 +278,23 @@ class ADAPTIVEQAOAansatz:
             return initial_matrix
 
         else:
-            # TODO: implement QISKIT backend
-            raise ValueError("Cost Hamiltonian hasn't implemented QISKIT backend yet...")
             # Initializing Q circuit
-            qcircuit = QuantumCircuit(self.n_qubits)
+            initial_matrix = Operator(QuantumCircuit(self.n_qubits)).data
 
             # ------ Cost unitary: ------ #
             # ZZ gate for each edge
             for qubit_i, qubit_j, weight in self.J_list:
+                # Initializing Q circuit
+                qcircuit = QuantumCircuit(self.n_qubits)
                 qcircuit.z(qubit=qubit_i)
                 qcircuit.z(qubit=qubit_j)
+                initial_matrix += Operator(qcircuit).data
             # Z gate for each qubit
             for qubit_i, weight in self.h_list:
+                qcircuit = QuantumCircuit(self.n_qubits)
                 qcircuit.z(qubit=qubit_i)
-            return qiskit.quantum_info.Operator(qcircuit).data
+                initial_matrix += Operator(qcircuit).data
+            return initial_matrix
 
     def get_mixer_hamiltonian(self, pauli_operator: str, target_qubit: int):
         """ Getting the matrix representation of the mixer hamiltonian H_c (as chosen from gate pool.)"""
