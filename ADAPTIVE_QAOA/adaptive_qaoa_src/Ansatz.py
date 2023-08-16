@@ -109,12 +109,12 @@ class ADAPTIVEQAOAansatz:
 
             # ------ Mixer unitary: ------ #
             # Get e^{-i*H_c*gamma}|psi_p>
-            state_vector = self.current_circuit.get_state_vector().reshape((self.n_qubits ** 2, 1))
+            state_vector = self.current_circuit.get_state_vector().reshape((2**self.n_qubits, 1))
             # Initialize max expectation
             max_expectation, best_mixer = -np.inf, None
             # Get gate pool
             for gates in self.mixer_gate_pool:
-                mixer = np.eye(self.n_qubits ** 2, dtype={64: np.complex64, 128: np.complex128}[self.precision])
+                mixer = np.eye(2**self.n_qubits, dtype={64: np.complex64, 128: np.complex128}[self.precision])
                 for qubits, pauli_operators in gates.items():
                     # 2-qubit Pauli string
                     if isinstance(pauli_operators, tuple):
@@ -178,11 +178,11 @@ class ADAPTIVEQAOAansatz:
         # Initializing Q circuit
         qc = QuantumCircuit(self.n_qubits)
 
-        # Gamma opt param for cost unitaries as last p vals.
-        gamma = theta[p:]
+        # Gamma opt param for cost unitaries as first p vals.
+        gamma = theta[:p]
 
-        # Beta opt param for mixing unitaries as first p vals.
-        beta = theta[:p]
+        # Beta opt param for mixing unitaries as last p vals.
+        beta = theta[p:]
 
         # Initial_state: Hadamard gate on each qbit
         for qubit_index in range(self.n_qubits):

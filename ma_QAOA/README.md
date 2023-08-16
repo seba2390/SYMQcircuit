@@ -1,0 +1,2 @@
+## Multi-angle QAOA: ##
+- Implementing Multi-angle QAOA as defined by: [^1]: [Rebekah Herrman, Phillip C. Lotshaw, James Ostrowski, Travis S. Humble, and George Siopsis. Multi-angle quantum approximate optimization algorithm. Sci Rep, 12(1):6781, April 2022. ISSN 2045-2322. doi: 10.1038/s41598-022-10555-8.](https://www.nature.com/articles/s41598-022-10555-8)

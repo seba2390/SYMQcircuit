@@ -1,0 +1,2 @@
+## Adaptive QAOA: ##
+- Implementing Adaptive QAOA as defined by: [^1]: [Linghua Zhu, Ho Lun Tang, George S. Barron, F. A. Calderon-Vargas, Nicholas J. Mayhall, Edwin Barnes, and Sophia E. Economou. An adaptive quantum approximate optimization algorithm for solving combinatorial problems on a quantum computer. May 2020. doi: 10.48550/arXiv.2005. 10258.](https://arxiv.org/abs/2005.10258)

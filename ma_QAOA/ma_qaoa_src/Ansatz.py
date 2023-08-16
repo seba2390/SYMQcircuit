@@ -2,14 +2,14 @@ import numpy as np
 
 from src.SYMQCircuit import *
 from src.Tools import _get_state_probabilities_
-from QAOA.qaoa_src.QAOATools import *
+from ma_QAOA.ma_qaoa_src.ma_QAOATools import *
 
 from qiskit import QuantumCircuit, execute
 from qiskit import BasicAer
 
 
-class QAOAansatz:
-    def __init__(self, n_qubits: int, w_edges: List[Tuple[int, int, float]], precision: int = 64,
+class MAQAOAansatz:
+    def __init__(self, n_qubits: int, n_layers: int, w_edges: List[Tuple[int, int, float]], precision: int = 64,
                  backend: str = "SYMQ"):
 
         __backends__ = ["SYMQ", "QISKIT"]
@@ -19,9 +19,14 @@ class QAOAansatz:
             raise ValueError(f"n_qubits should be integer.")
         if n_qubits <= 0:
             raise ValueError(f'n_qubits should be > 0, but is: {n_qubits}.')
+        if not isinstance(n_layers, int):
+            raise ValueError(f"n_layers should be integer.")
+        if n_qubits < 1:
+            raise ValueError(f'n_layers should be >= 1, but is: {n_layers}.')
 
         self.backend = backend
         self.n_qubits = n_qubits
+        self.n_layers = n_layers
         self.w_edges = w_edges
         self.precision = precision
 
@@ -43,6 +48,20 @@ class QAOAansatz:
             self.h_vec[i] = val
         for i, j, val in self.J_list:
             self.J_mat[i, j] = val
+
+        self.nr_cost_terms = self.get_nr_cost_terms()
+        self.nr_mixer_terms = self.n_qubits  # For standard QAOA
+
+    def get_nr_cost_terms(self):
+        nr_terms = 0
+        # ------ Cost unitary: ------ #
+        # Weighted RZZ gate for each edge
+        for qubit_i, qubit_j, weight in self.J_list:
+            nr_terms += 1
+        # Weighted RZ gate for each qubit
+        for qubit_i, weight in self.h_list:
+            nr_terms += 1
+        return nr_terms
 
     def set_circuit(self, theta: List[float]):
         """
@@ -69,44 +88,46 @@ class QAOAansatz:
         This function constructs a QAOA circuit with weighted terms for the optimization problem.
         The QAOA circuit includes alternating cost and mixer unitaries based on the given parameters.
         """
-        # Number of alternating (Cost,Mixer) unitaries
-        p = len(theta) // 2
-        # print(theta)
 
         # Initializing Q circuit
         qcircuit = SYMQCircuit(nr_qubits=self.n_qubits, precision=self.precision)
 
         # Gamma opt param for cost unitaries as last p vals.
-        gamma = theta[p:]
+        gamma = theta[:self.nr_cost_terms*self.n_layers]
 
         # Beta opt param for mixing unitaries as first p vals.
-        beta = theta[:p]
+        beta = theta[self.nr_cost_terms*self.n_layers:]
+
 
         # Initial_state: Hadamard gate on each qbit
         for qubit_index in range(self.n_qubits):
             qcircuit.add_h(target_qubit=qubit_index)
 
         # For each Cost,Mixer repetition
-        for irep in range(0, p):
+        gamma_counter, beta_counter = 0, 0
+        for irep in range(0, self.n_layers):
 
             # ------ Cost unitary: ------ #
             # Weighted RZZ gate for each edge
             for qubit_i, qubit_j, weight in self.J_list:
-                angle = 2 * gamma[irep] * weight
+                angle = 2 * gamma[gamma_counter] * weight
                 # print(f"Layer: {irep}, RZZ angle: {angle}, gamma: {gamma[irep]}, weight: {weight}")
                 qcircuit.add_rzz(qubit_1=qubit_i, qubit_2=qubit_j, angle=angle)
+                gamma_counter += 1
             # Weighted RZ gate for each qubit
             for qubit_i, weight in self.h_list:
-                angle = 2 * gamma[irep]
+                angle = 2 * gamma[gamma_counter]
                 # print(f"Layer: {irep}, RZ angle: {angle}, gamma: {gamma[irep]}, weight: {weight}")
                 qcircuit.add_rz(target_qubit=qubit_i, angle=angle)
+                gamma_counter += 1
 
             # ------ Mixer unitary: ------ #
             # Mixer unitary: Weighted X rotation on each qubit
             for qubit_i, weight in self.h_list:
-                angle = 2 * beta[irep]
+                angle = 2 * beta[beta_counter]
                 # print(f"Layer: {irep}, RX angle: {angle}, beta: {beta[irep]}, weight: {weight}")
                 qcircuit.add_rx(target_qubit=qubit_i, angle=angle)
+                beta_counter += 1
         return qcircuit
 
     def set_QISKIT_circuit(self, theta: List[float]):
@@ -118,10 +139,10 @@ class QAOAansatz:
         qc = QuantumCircuit(self.n_qubits)
 
         # Gamma opt param for cost unitaries as last p vals.
-        gamma = theta[:p]
+        gamma = theta[p:]
 
         # Beta opt param for mixing unitaries as first p vals.
-        beta = theta[p:]
+        beta = theta[:p]
 
         # Initial_state: Hadamard gate on each qbit
         for qubit_index in range(self.n_qubits):
@@ -208,5 +229,6 @@ class QAOAansatz:
         else:
             backend = BasicAer.get_backend("statevector_simulator")
             prob_distribution = _get_state_probabilities_(
-                state_vector_=execute(self.set_QISKIT_circuit(theta=theta), backend).result().get_statevector(),reverse_states=True)
+                state_vector_=execute(self.set_QISKIT_circuit(theta=theta), backend).result().get_statevector(),
+                reverse_states=True)
         return self.compute_expectation(counts=prob_distribution)
