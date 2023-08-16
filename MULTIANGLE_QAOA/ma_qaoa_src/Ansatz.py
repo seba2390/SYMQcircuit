@@ -2,7 +2,7 @@ import numpy as np
 
 from src.SYMQCircuit import *
 from src.Tools import _get_state_probabilities_
-from ma_QAOA.ma_qaoa_src.ma_QAOATools import *
+from MULTIANGLE_QAOA.ma_qaoa_src.ma_QAOATools import *
 
 from qiskit import QuantumCircuit, execute
 from qiskit import BasicAer
