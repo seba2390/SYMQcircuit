@@ -794,6 +794,27 @@ class SYMQCircuit:
         final_mat_rep = np.cos(theta) * _I_ - 1j * np.sin(theta) * _P_
         self.__circuit_unitary__ = final_mat_rep @ self.__circuit_unitary__
 
+    def add_pauli_gate(self, pauli: str, target_qubit: int) -> None:
+        """
+        Adds a general Pauli gate (X, Y, or Z) to the quantum circuit.
+
+        Args:
+            pauli (str): The Pauli operator to apply. Should be one of 'X', 'Y', or 'Z'.
+            target_qubit (int): The target qubit index.
+
+        Raises:
+            ValueError: If the provided Pauli string is invalid.
+        """
+        if not isinstance(pauli, str) or pauli not in ['X', 'Y', 'Z']:
+            raise ValueError(f"Invalid Pauli string: {pauli} - should be str and either 'X', 'Y', or 'Z'")
+
+        if pauli == 'X':
+            self.add_x(target_qubit=target_qubit)
+        elif pauli == 'Y':
+            self.add_y(target_qubit=target_qubit)
+        else:
+            self.add_z(target_qubit=target_qubit)
+
     def add_cu(self):
         # TODO: add impl of this.
         pass

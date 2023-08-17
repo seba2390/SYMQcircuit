@@ -82,11 +82,11 @@ class ADAPTIVEQAOAansatz:
         p = len(theta) // 2
         # print(theta)
 
-        # Gamma opt param for cost unitaries as last p vals.
-        gamma = theta[p:]
+        # Gamma opt param for cost unitaries as first p vals.
+        gamma = theta[:p]
 
-        # Beta opt param for mixing unitaries as first p vals.
-        beta = theta[:p]
+        # Beta opt param for mixing unitaries as last p vals.
+        beta = theta[p:]
 
         # Initial_state: Hadamard gate on each qbit
         for qubit_index in range(self.n_qubits):
@@ -114,23 +114,22 @@ class ADAPTIVEQAOAansatz:
             max_expectation, best_mixer = -np.inf, None
             # Get gate pool
             for gates in self.mixer_gate_pool:
-                mixer = np.eye(2**self.n_qubits, dtype={64: np.complex64, 128: np.complex128}[self.precision])
+                mixer = SYMQCircuit(nr_qubits=self.n_qubits,precision=self.precision)
                 for qubits, pauli_operators in gates.items():
                     # 2-qubit Pauli string
                     if isinstance(pauli_operators, tuple):
                         operator_1, operator_2 = pauli_operators
                         qubit_1, qubit_2 = qubits
-                        mixer += self.get_mixer_hamiltonian(pauli_operator=operator_1, target_qubit=qubit_1)
-                        mixer = mixer @ self.get_mixer_hamiltonian(pauli_operator=operator_2, target_qubit=qubit_2)
+                        mixer.add_pauli_gate(pauli=operator_1, target_qubit=qubit_1)
+                        mixer.add_pauli_gate(pauli=operator_2, target_qubit=qubit_2)
                     # 1-qubit Pauli string
                     else:
                         operator = pauli_operators
                         qubit = qubits
-                        mixer += self.get_mixer_hamiltonian(pauli_operator=operator, target_qubit=qubit)
+                        mixer.add_pauli_gate(pauli=operator, target_qubit=qubit)
                 # Calculate expectation
-                commutator = self.get_commutator(A=self.cost_hamilton_matrix, B=mixer)
+                commutator = self.get_commutator(A=self.cost_hamilton_matrix, B=mixer.get_circuit_unitary())
                 expectation = (-1j * (state_vector.T @ (commutator @ state_vector))[0, 0]).real
-
                 # Compare expectation
                 if expectation > max_expectation:
                     max_expectation = expectation
