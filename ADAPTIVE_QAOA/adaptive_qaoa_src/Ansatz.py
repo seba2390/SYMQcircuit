@@ -295,38 +295,6 @@ class ADAPTIVEQAOAansatz:
                 initial_matrix += Operator(qcircuit).data
             return initial_matrix
 
-    def get_mixer_hamiltonian(self, pauli_operator: str, target_qubit: int):
-        """ Getting the matrix representation of the mixer hamiltonian H_c (as chosen from gate pool.)"""
-
-        if not isinstance(pauli_operator, str):
-            raise ValueError("Pauli operator should be string type.")
-        if pauli_operator not in ['X', 'Y', 'Z']:
-            raise ValueError("Pauli operator should be in: ", ['X', 'Y', 'Z'])
-
-        if self.backend == "SYMQ":
-            # Initializing Q circuit
-            qcircuit = SYMQCircuit(nr_qubits=self.n_qubits, precision=self.precision)
-            # Adding gate
-            if pauli_operator == 'X':
-                qcircuit.add_x(target_qubit=target_qubit)
-            elif pauli_operator == 'Y':
-                qcircuit.add_y(target_qubit=target_qubit)
-            else:
-                qcircuit.add_z(target_qubit=target_qubit)
-            return qcircuit.get_circuit_unitary()
-
-        else:
-            # Initializing Q circuit
-            qcircuit = QuantumCircuit(self.n_qubits)
-            # Adding gate
-            if pauli_operator == 'X':
-                qcircuit.x(qubit=target_qubit)
-            elif pauli_operator == 'Y':
-                qcircuit.y(qubit=target_qubit)
-            else:
-                qcircuit.z(qubit=target_qubit)
-            return qiskit.quantum_info.Operator(qcircuit).data
-
     def Ising_cost(self, state: np.ndarray) -> float:
         """
         Calculate the Ising cost for a given spin configuration.
