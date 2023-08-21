@@ -80,3 +80,13 @@ circuit4.add_h(2)
 
 
 
+### Installation ###
+##### MacOS/Unix: #####
+env2/bin/python -m pip install -r requirements.txt
+
+##### Windows: #####
+env2\bin\python -m pip install -r requirements.txt
+
+N.B. See [pip 'freeze' documentation](https://pip.pypa.io/en/stable/cli/pip_freeze/) for detailed explanation. 
+
+
