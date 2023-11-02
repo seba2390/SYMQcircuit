@@ -67,78 +67,80 @@ def get_ising(mu: np.ndarray, sigma: np.ndarray, alpha: float) -> tuple[np.ndarr
     return J, h, _offset_
 
 
-N = 4
-k = 2
+file_id = 0
 alpha = 0.001
+N_seeds = 10
+max_iter = 10000
+for N in range(3, 11):
+    print(f'=== N === : {N} / 8')
+    for k in range(1, N):
+        result = {}
+        for layers in range(1, 6):
+            print(f'Layer: {layers}')
+            normed_c_vals = []
+            max_iter_reached = 0
+            for seed in range(N_seeds):
+                print(f'seed: {seed}')
+                np.random.seed(seed)
 
-N_seeds = 3
-result = {}
-for layers in range(1, 3):
-    print(f'Layer: {layers}')
-    normed_c_vals = []
-    max_iter_reached = 0
-    for seed in range(N_seeds):
-        print(f'seed: {seed}')
-        np.random.seed(seed)
+                expected_returns = np.random.uniform(low=0, high=0.95, size=N)
 
-        expected_returns = np.random.uniform(low=0, high=0.95, size=N)
+                _temp_ = np.random.uniform(low=0, high=1, size=(N, N))
+                covariances = np.dot(_temp_, _temp_.transpose())
+                if not np.alltrue(covariances == covariances.T) or not np.alltrue(np.linalg.eigvals(covariances) >= 0):
+                    raise ValueError('Covariance matrix is not PSD.')
 
-        _temp_ = np.random.uniform(low=0, high=1, size=(N, N))
-        covariances = np.dot(_temp_, _temp_.transpose())
-        if not np.alltrue(covariances == covariances.T) or not np.alltrue(np.linalg.eigvals(covariances) >= 0):
-            raise ValueError('Covariance matrix is not PSD.')
+                J, h, offset = get_ising(mu=expected_returns, sigma=covariances, alpha=alpha)
+                max_cost, min_cost, min_state = ising_min_cost_partition(nr_qubits=N, k=k, J_mat=J, h_vector=h, offset=offset)
 
-        J, h, offset = get_ising(mu=expected_returns, sigma=covariances, alpha=alpha)
-        max_cost, min_cost, min_state = ising_min_cost_partition(nr_qubits=N, k=k, J_mat=J, h_vector=h, offset=offset)
+                # Size of circuit
+                n_qubits = N
 
-        # Size of circuit
-        n_qubits = N
+                # Defining instance of QAOA ansatz
+                QAOA_objective = CPQAOAansatz(n_qubits=n_qubits,
+                                              n_layers=layers,
+                                              w_edges=None,
+                                              cardinality=k,
+                                              precision=64)
+                QAOA_objective.set_ising_model(J=J, h=h, offset=offset)
 
-        # Defining instance of QAOA ansatz
-        QAOA_objective = CPQAOAansatz(n_qubits=n_qubits,
-                                      n_layers=layers,
-                                      w_edges=None,
-                                      cardinality=k,
-                                      precision=64)
-        QAOA_objective.set_ising_model(J=J, h=h, offset=offset)
+                # Initial guess for parameters (gamma, beta) of circuit
+                theta_min, theta_max = -np.pi, np.pi
+                gamma_i = np.random.uniform(low=theta_min, high=theta_max, size=QAOA_objective.nr_cost_terms * layers).tolist()
+                beta_i = np.random.uniform(low=theta_min, high=theta_max, size=(QAOA_objective.n_qubits - 1) * layers).tolist()
+                theta_i = gamma_i + beta_i
 
-        # Initial guess for parameters (gamma, beta) of circuit
-        theta_min, theta_max = -np.pi, np.pi
-        gamma_i = np.random.uniform(low=theta_min, high=theta_max, size=QAOA_objective.nr_cost_terms * layers).tolist()
-        beta_i = np.random.uniform(low=theta_min, high=theta_max, size=(QAOA_objective.n_qubits - 1) * layers).tolist()
-        theta_i = gamma_i + beta_i
+                # ------ Optimizer run ------ #
+                _available_methods_ = ['Nelder-Mead', 'Powell', 'COBYLA', 'trust-constr']
+                res = sc.optimize.minimize(fun=QAOA_objective.evaluate_circuit, x0=theta_i, method=_available_methods_[2],
+                                           options={'disp': False, 'maxiter': max_iter})
 
-        # ------ Optimizer run ------ #
-        _available_methods_ = ['Nelder-Mead', 'Powell', 'COBYLA', 'trust-constr']
-        res = sc.optimize.minimize(fun=QAOA_objective.evaluate_circuit, x0=theta_i, method=_available_methods_[2],
-                                   options={'disp': False, 'maxiter': 1000})
+                # Final parameters (beta, gamma) for circuit
+                theta_f = res.x.tolist()
+                c = res.fun
 
-        # Final parameters (beta, gamma) for circuit
-        theta_f = res.x.tolist()
-        c = res.fun
+                normed_c_vals.append(1 / (max_cost - min_cost) * c - 1 / (max_cost / min_cost - 1))
+                if res['message'] == 'Maximum number of function evaluations has been exceeded.':
+                    max_iter_reached += 1 / N_seeds
 
-        normed_c_vals.append(1 / (max_cost - min_cost) * c - 1 / (max_cost / min_cost - 1))
-        if res['message'] == 'Maximum number of function evaluations has been exceeded.':
-            max_iter_reached += 1 / N_seeds
-
-    result[layers] = (np.mean(normed_c_vals), np.std(normed_c_vals), max_iter_reached)
-
-
-def save_run(fname: str, description: str, results: dict[int, tuple[float, float, float]]) -> None:
-    with open(file=fname + '.txt', mode='w') as output_file:
-        output_file.write(' ## Description: \n ' + description + '\n\n')
-        output_file.write(
-            '|| --- Num. layers --- || --- Avg. --- || --- Std. dev --- || --- Prc. max iter. reached --- || \n')
-        for num_layers in list(results.keys()):
-            __str__ = '           ' + str(num_layers) + '        '
-            __str__ += '        ' + str(np.round(results[num_layers][0], 5)) + '      '
-            __str__ += '        ' + str(np.round(results[num_layers][1], 5)) + '          '
-            __str__ += '        ' + str(np.round(results[num_layers][2], 5)) + '        ' + '\n'
-            output_file.write(__str__)
-    output_file.close()
+            result[layers] = (np.mean(normed_c_vals), np.std(normed_c_vals), max_iter_reached)
 
 
-desc = (f'N={N}, k={k}, alpha={alpha}, avg. over {N_seeds} runs. Only Nearest Neighbor mixer w. no Z. Initialized + '
-        f'with cost, w. "k" first set.')
-fname = 'run1'
-save_run(fname=fname, description=desc, results=result)
+        def save_run(fname: str, description: str, results: dict[int, tuple[float, float, float]]) -> None:
+            with open(file=fname + '.txt', mode='w') as output_file:
+                output_file.write(' ## Description: \n ' + description + '\n\n')
+                output_file.write(
+                    '|| --- Num. layers --- || --- Avg. --- || --- Std. dev --- || --- Prc. max iter. reached --- || \n')
+                for num_layers in list(results.keys()):
+                    __str__ = '           ' + str(num_layers) + '        '
+                    __str__ += '        ' + str(np.round(results[num_layers][0], 5)) + '      '
+                    __str__ += '        ' + str(np.round(results[num_layers][1], 5)) + '          '
+                    __str__ += '        ' + str(np.round(results[num_layers][2], 5)) + '        ' + '\n'
+                    output_file.write(__str__)
+            output_file.close()
+
+
+        desc = (f'N={N}, k={k}, alpha={alpha}, avg. over {N_seeds} runs. Only Nearest Neighbor mixer w. no Z w. "k" first set, and COBYLA max iter set to {max_iter}')
+        fname = f'run{file_id}'
+        save_run(fname=fname, description=desc, results=result)
+        file_id += 1

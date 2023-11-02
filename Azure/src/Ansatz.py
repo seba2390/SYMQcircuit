@@ -23,8 +23,6 @@ class CPQAOAansatz:
             raise ValueError(f"n_layers should be integer.")
         if n_qubits < 1:
             raise ValueError(f'n_layers should be >= 1, but is: {n_layers}.')
-        if w_edges is None:
-            warnings.warn(Warning('[WARNING]: No "w_edges" provided - expecting call to .set_ising_model() '))
         if not 0 <= cardinality < n_qubits:
             raise ValueError(f'cardinality should be in range: 0 <= cardinality < n_qubits.')
 
