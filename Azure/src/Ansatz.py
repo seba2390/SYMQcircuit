@@ -154,7 +154,7 @@ class CPQAOAansatz:
         for irep in range(0, self.n_layers):
 
             # ------ Cost unitary: ------ #
-            H_C = CostHamiltonian(hilbert_space_size=self.n_qubits,
+            """H_C = CostHamiltonian(hilbert_space_size=self.n_qubits,
                                   backend='Qiskit',
                                   precision=self.precision)
             J_N, h_N = len(self.J_list), len(self.h_list)
@@ -164,8 +164,7 @@ class CPQAOAansatz:
                                                                       phi_values=phi_values,
                                                                       ising_J=self.J_list,
                                                                       ising_h=self.h_list)
-            qcircuit.add_gate(matrix_representation=cost_circ_mat_rep)
-
+            qcircuit.add_gate(matrix_representation=cost_circ_mat_rep)"""
             # ------ Mixer unitary: ------ #
             H_M = MixerHamiltonian(hilbert_space_size=self.n_qubits,
                                    connectivity='NearestNeighbor',
