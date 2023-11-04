@@ -774,7 +774,8 @@ class SYMQCircuit:
 
         """
         if len(pauli_string) != self.circuit_size or not all(c in 'IXYZ' for c in pauli_string):
-            raise ValueError(f"Invalid Pauli string: {pauli_string} - should have appropriate length and only contain I,X,Y,Z")
+            raise ValueError(
+                f"Invalid Pauli string: {pauli_string} - should have appropriate length and only contain I,X,Y,Z")
 
         final_circuit = SYMQCircuit(nr_qubits=self.circuit_size, precision=self.precision)
         _target_qubit_ = 0
@@ -788,7 +789,7 @@ class SYMQCircuit:
                 circuit.add_z(target_qubit=_target_qubit_)
             final_circuit = final_circuit + circuit
             _target_qubit_ += 1
-        _I_ = identity(2**self.circuit_size, format='csr', dtype=self.dtype)
+        _I_ = identity(2 ** self.circuit_size, format='csr', dtype=self.dtype)
         _P_ = final_circuit.get_circuit_unitary(as_sparse=True)
 
         final_mat_rep = np.cos(theta) * _I_ - 1j * np.sin(theta) * _P_
@@ -830,6 +831,30 @@ class SYMQCircuit:
             return self.__circuit_unitary__
         return self.__circuit_unitary__.todense()
 
+    def add_gate(self, matrix_representation: Union[csr_matrix, np.ndarray]):
+        if isinstance(matrix_representation, csr_matrix):
+            if not (2**self.circuit_size == matrix_representation.shape[0] == matrix_representation.shape[1]):
+                raise ValueError("Given matrix are not of same size as circuit. For circuit of 'N' qubits"
+                                 " the matrix should be (2^N) x (2^N).")
+
+            resulting_circuit = SYMQCircuit(nr_qubits=self.circuit_size)
+            resulting_circuit.__circuit_unitary__ = matrix_representation @ self.__circuit_unitary__
+            resulting_circuit.dtype = self.dtype
+            self.__circuit_unitary__ = resulting_circuit.__circuit_unitary__
+
+        elif isinstance(matrix_representation, np.ndarray):
+            if not (2**self.circuit_size == matrix_representation.shape[0] == matrix_representation.shape[1]):
+                raise ValueError("Given matrix are not of same size as circuit. For circuit of 'N' qubits"
+                                 " the matrix should be (2^N) x (2^N).")
+
+            resulting_circuit = SYMQCircuit(nr_qubits=self.circuit_size)
+            resulting_circuit.__circuit_unitary__ = csr_matrix(matrix_representation) @ self.__circuit_unitary__
+            resulting_circuit.dtype = self.dtype
+            self.__circuit_unitary__ = resulting_circuit.__circuit_unitary__
+
+        else:
+            raise ValueError(f' Provided matrix should be either a "csr_matrix" or "numpy array". ')
+
     def get_state_vector(self):
         """
         Get the state vector of the quantum circuit.
@@ -840,7 +865,7 @@ class SYMQCircuit:
         __state_vector__ = np.array([1.0] + [0.0 for _ in range(2 ** self.circuit_size - 1)], dtype=self.dtype)
         return self.get_circuit_unitary() @ __state_vector__
 
-    def get_state_probabilities(self, reverse_states: bool = False) -> dict:
+    def get_state_probabilities(self, reverse_states: bool = False, eps: float = 1e-6) -> dict:
         """
         Calculate the probabilities of each basis state in a quantum state.
         N.B. as circuit
@@ -853,5 +878,7 @@ class SYMQCircuit:
             _state_string_ = represent_integer_with_bits(number=n, nr_bits=int(self.circuit_size))
             if reverse_states:
                 _state_string_ = _state_string_[::-1]
-            _probs_[_state_string_] = np.power(np.linalg.norm(c_n), 2)
+            p = np.power(np.linalg.norm(c_n), 2)
+            if p > eps:
+                _probs_[_state_string_] = np.power(np.linalg.norm(c_n), 2)
         return _probs_
